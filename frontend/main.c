@@ -669,7 +669,12 @@ int main(int argc, char *argv[])
 	else
 		menu_loop();
 
+#ifdef LIGHTREC
+	if (!lightrec_very_debug)
+		pl_start_watchdog();
+#else
 	pl_start_watchdog();
+#endif
 
 	while (!g_emu_want_quit)
 	{
