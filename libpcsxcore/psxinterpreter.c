@@ -27,6 +27,8 @@
 #include "psxhle.h"
 #include "debug.h"
 
+#include "../frontend/main.h"
+
 static int branch = 0;
 static int branch2 = 0;
 static u32 branchPC;
@@ -49,6 +51,15 @@ void (*psxCP0[32])();
 void (*psxCP2[64])(struct psxCP2Regs *regs);
 void (*psxCP2BSC[32])();
 
+static void psxLightrecBranchTest() {
+#ifdef LIGHTREC
+	if (!use_lightrec_interpreter)
+		psxBranchTest();
+#else
+	psxBranchTest();
+#endif
+}
+
 static void delayRead(int reg, u32 bpc) {
 	u32 rold, rnew;
 
@@ -66,7 +77,7 @@ static void delayRead(int reg, u32 bpc) {
 	execI(); // first branch opcode
 	psxRegs.GPR.r[reg] = rnew;
 
-	psxBranchTest();
+	psxLightrecBranchTest();
 }
 
 static void delayWrite(int reg, u32 bpc) {
@@ -83,7 +94,7 @@ static void delayWrite(int reg, u32 bpc) {
 	branch = 0;
 	psxRegs.pc = bpc;
 
-	psxBranchTest();
+	psxLightrecBranchTest();
 }
 
 static void delayReadWrite(int reg, u32 bpc) {
@@ -95,7 +106,7 @@ static void delayReadWrite(int reg, u32 bpc) {
 	branch = 0;
 	psxRegs.pc = bpc;
 
-	psxBranchTest();
+	psxLightrecBranchTest();
 }
 
 // this defines shall be used with the tmp 
@@ -283,7 +294,7 @@ void psxDelayTest(int reg, u32 bpc) {
 	branch = 0;
 	psxRegs.pc = bpc;
 
-	psxBranchTest();
+	psxLightrecBranchTest();
 }
 
 static u32 psxBranchNoDelay(void) {
@@ -359,7 +370,7 @@ static int psxDelayBranchExec(u32 tar) {
 	branch = 0;
 	psxRegs.pc = tar;
 	psxRegs.cycle += BIAS;
-	psxBranchTest();
+	psxLightrecBranchTest();
 	return 1;
 }
 
@@ -466,7 +477,7 @@ static void doBranch(u32 tar) {
 	branch = 0;
 	psxRegs.pc = branchPC;
 
-	psxBranchTest();
+	psxLightrecBranchTest();
 }
 
 /*********************************************************
@@ -780,11 +791,17 @@ void psxMFC0() { if (!_Rt_) return; _i32(_rRt_) = (int)_rFs_; }
 void psxCFC0() { if (!_Rt_) return; _i32(_rRt_) = (int)_rFs_; }
 
 void psxTestSWInts() {
+#ifdef LIGHTREC
+	if (!use_lightrec_interpreter) {
+#endif
 	if (psxRegs.CP0.n.Cause & psxRegs.CP0.n.Status & 0x0300 &&
 	   psxRegs.CP0.n.Status & 0x1) {
 		psxRegs.CP0.n.Cause &= ~0x7c;
 		psxException(psxRegs.CP0.n.Cause, branch);
 	}
+#ifdef LIGHTREC
+	}
+#endif
 }
 
 void MTC0(int reg, u32 val) {

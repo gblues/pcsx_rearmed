@@ -58,6 +58,11 @@ enum sched_action emu_action, emu_action_old;
 char hud_msg[64];
 int hud_new_msg;
 
+int use_lightrec_interpreter = 0;
+int lightrec_debug = 0;
+int lightrec_very_debug = 0;
+unsigned int lightrec_begin_cycles = 0;
+
 static void make_path(char *buf, size_t size, const char *dir, const char *fname)
 {
 	if (fname)
@@ -558,9 +563,27 @@ int main(int argc, char *argv[])
 							"\t-cfg FILE\tLoads desired configuration file (default: ~/.pcsx/pcsx.cfg)\n"
 							"\t-psxout\t\tEnable PSX output\n"
 							"\t-load STATENUM\tLoads savestate STATENUM (1-5)\n"
+#ifdef LIGHTREC
+							"\t-lightrec-interpreter\tUse the interpreter inside the Lightrec dynarec\n"
+							"\t-lightrec-debug\tGenerate log data for the Big-Ass Debugger\n"
+							"\t-lightrec-very-debug\tUse the Big-Ass Debugger with aggressive bug detection\n"
+							"\t-lightrec-begin-cycles COUNT\tStart debugging after COUNT cycles elapsed\n"
+#endif
 							"\t-h -help\tDisplay this message\n"
 							"\tfile\t\tLoads a PSX EXE file\n"));
 			 return 0;
+#ifdef LIGHTREC
+		} else if (!strcmp(argv[i], "-lightrec-interpreter")) {
+			use_lightrec_interpreter = 1;
+		} else if (!strcmp(argv[i], "-lightrec-debug")) {
+			lightrec_debug = 1;
+		} else if (!strcmp(argv[i], "-lightrec-very-debug")) {
+			lightrec_debug = 1;
+			lightrec_very_debug = 1;
+		} else if (!strcmp(argv[i], "-lightrec-begin-cycles")) {
+			lightrec_begin_cycles = (unsigned int) strtol(
+					argv[++i], NULL, 0);
+#endif
 		} else {
 			strncpy(file, argv[i], MAXPATHLEN);
 			if (file[0] != '/') {

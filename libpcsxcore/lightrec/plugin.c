@@ -12,6 +12,8 @@
 #include "../psxmem.h"
 #include "../r3000a.h"
 
+#include "../frontend/main.h"
+
 static struct lightrec_state *lightrec_state;
 
 static char cache_control[512];
@@ -328,26 +330,92 @@ static int lightrec_plugin_init(void)
 	return 0;
 }
 
-static void lightrec_plugin_execute_block(void)
+extern void intExecuteBlock(void);
+
+static u32 hash_calculate(const void *buffer, u32 count)
 {
-	memcpy(lightrec_state->native_reg_cache, psxRegs.GPR.r,
-			sizeof(psxRegs.GPR.r));
+	unsigned int i;
+	u32 *data = (u32 *) buffer;
+	u32 hash = 0xffffffff;
 
-	psxRegs.pc = lightrec_execute(lightrec_state, psxRegs.pc);
-	psxRegs.cycle = lightrec_state->current_cycle;
-
-	memcpy(psxRegs.GPR.r, lightrec_state->native_reg_cache,
-			sizeof(psxRegs.GPR.r));
-
-	if (lightrec_state->block_exit_flags == LIGHTREC_EXIT_SEGFAULT) {
-		fprintf(stderr, "Exiting at cycle 0x%08x\n", psxRegs.cycle);
-		exit(1);
+	count /= 4;
+	for(i = 0; i < count; ++i) {
+		hash += data[i];
+		hash += (hash << 10);
+		hash ^= (hash >> 6);
 	}
 
-	if (lightrec_state->block_exit_flags == LIGHTREC_EXIT_SYSCALL)
-		psxException(0x20, 0);
+	hash += (hash << 3);
+	hash ^= (hash >> 11);
+	hash += (hash << 15);
+	return hash;
+}
+
+static void print_for_big_ass_debugger(void)
+{
+	unsigned int i;
+	extern int lightrec_very_debug;
+
+	printf("CYCLE 0x%08x PC 0x%08x", psxRegs.cycle, psxRegs.pc);
+
+	if (lightrec_very_debug)
+		printf(" RAM 0x%08x SCRATCH 0x%08x HW 0x%08x",
+				hash_calculate(psxM, 0x200000),
+				hash_calculate(psxH, 0x400),
+				hash_calculate(psxH + 0x1000, 0x2000));
+
+	printf(" CP0 0x%08x CP2D 0x%08x CP2C 0x%08x INT 0x%04x INTCYCLE 0x%08x",
+			hash_calculate(&psxRegs.CP0.r,
+				sizeof(psxRegs.CP0.r)),
+			hash_calculate(&psxRegs.CP2D.r,
+				sizeof(psxRegs.CP2D.r)),
+			hash_calculate(&psxRegs.CP2C.r,
+				sizeof(psxRegs.CP2C.r)),
+			psxRegs.interrupt,
+			hash_calculate(psxRegs.intCycle,
+				sizeof(psxRegs.intCycle)));
+
+	if (lightrec_very_debug)
+		for (i = 0; i < 34; i++)
+			printf(" GPR[%i] 0x%08x", i, psxRegs.GPR.r[i]);
+	else
+		printf(" GPR 0x%08x", hash_calculate(&psxRegs.GPR.r,
+					sizeof(psxRegs.GPR.r)));
+	printf("\n");
+}
+
+static void lightrec_plugin_execute_block(void)
+{
+	u32 old_pc = psxRegs.pc;
+
+	if (use_lightrec_interpreter) {
+		intExecuteBlock();
+	} else {
+		memcpy(lightrec_state->native_reg_cache, psxRegs.GPR.r,
+				sizeof(psxRegs.GPR.r));
+
+		psxRegs.pc = lightrec_execute(lightrec_state, psxRegs.pc);
+		psxRegs.cycle = lightrec_state->current_cycle;
+
+		memcpy(psxRegs.GPR.r, lightrec_state->native_reg_cache,
+				sizeof(psxRegs.GPR.r));
+
+		if (lightrec_state->block_exit_flags ==
+				LIGHTREC_EXIT_SEGFAULT) {
+			fprintf(stderr, "Exiting at cycle 0x%08x\n",
+					psxRegs.cycle);
+			exit(1);
+		}
+
+		if (lightrec_state->block_exit_flags == LIGHTREC_EXIT_SYSCALL)
+			psxException(0x20, 0);
+	}
 
 	psxBranchTest();
+
+	if (lightrec_debug && psxRegs.cycle >= lightrec_begin_cycles
+			&& psxRegs.pc != old_pc)
+		print_for_big_ass_debugger();
 
 	if ((psxRegs.CP0.n.Cause & psxRegs.CP0.n.Status & 0x300) &&
 			(psxRegs.CP0.n.Status & 0x1)) {
