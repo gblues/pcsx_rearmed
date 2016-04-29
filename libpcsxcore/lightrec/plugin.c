@@ -289,6 +289,23 @@ static struct lightrec_mem_map lightrec_map[] = {
 		.length = sizeof(cache_control),
 		.address = &cache_control,
 	},
+
+	/* Mirrors of the kernel/user memory */
+	{
+		.pc = 0x00200000,
+		.length = 0x200000,
+		.mirror_of = &lightrec_map[PSX_MAP_KERNEL_USER_RAM],
+	},
+	{
+		.pc = 0x00400000,
+		.length = 0x200000,
+		.mirror_of = &lightrec_map[PSX_MAP_KERNEL_USER_RAM],
+	},
+	{
+		.pc = 0x00600000,
+		.length = 0x200000,
+		.mirror_of = &lightrec_map[PSX_MAP_KERNEL_USER_RAM],
+	},
 };
 
 static int lightrec_plugin_init(void)
