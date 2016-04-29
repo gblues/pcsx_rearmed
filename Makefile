@@ -71,6 +71,15 @@ endif
 ifeq "$(DRC_CACHE_BASE)" "1"
 libpcsxcore/new_dynarec/%.o: CFLAGS += -DBASE_ADDR_FIXED=1
 endif
+else
+CFLAGS += -DLIGHTREC
+LDLIBS += -llightrec
+OBJS += libpcsxcore/lightrec/plugin.o
+frontend/libretro.o: CFLAGS += -DDRC_DISABLE
+endif
+else
+frontend/libretro.o: CFLAGS += -DDRC_DISABLE
+endif
 
 # spu
 OBJS += plugins/dfsound/dma.o plugins/dfsound/freeze.o \
