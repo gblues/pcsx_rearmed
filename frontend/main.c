@@ -163,7 +163,8 @@ void emu_set_default_config(void)
 	spu_config.iUseInterpolation = 0;
 	spu_config.iTempo = 1;
 #endif
-	new_dynarec_hacks = 0;
+	if (NEW_DYNAREC)
+		new_dynarec_hacks = 0;
 
 	in_type1 = PSE_PAD_TYPE_STANDARD;
 	in_type2 = PSE_PAD_TYPE_STANDARD;

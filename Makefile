@@ -55,15 +55,19 @@ OBJS += libpcsxcore/gte_neon.o
 endif
 libpcsxcore/psxbios.o: CFLAGS += -Wno-nonnull
 
+USE_NEW_DYNAREC=0
+
 # dynarec
 ifeq "$(USE_DYNAREC)" "1"
-OBJS += libpcsxcore/new_dynarec/new_dynarec.o
-OBJS += libpcsxcore/new_dynarec/pcsxmem.o
  ifeq "$(ARCH)" "arm"
+ OBJS += libpcsxcore/new_dynarec/new_dynarec.o libpcsxcore/new_dynarec/pcsxmem.o
  OBJS += libpcsxcore/new_dynarec/linkage_arm.o
+ USE_NEW_DYNAREC=1
  libpcsxcore/new_dynarec/new_dynarec.o: libpcsxcore/new_dynarec/assem_arm.c
  else ifneq (,$(findstring $(ARCH),aarch64 arm64))
+ OBJS += libpcsxcore/new_dynarec/new_dynarec.o libpcsxcore/new_dynarec/pcsxmem.o
  OBJS += libpcsxcore/new_dynarec/linkage_arm64.o
+ USE_NEW_DYNAREC=1
  libpcsxcore/new_dynarec/new_dynarec.o: libpcsxcore/new_dynarec/assem_arm64.c
  else
  $(error no dynarec support for architecture $(ARCH))
@@ -71,6 +75,9 @@ OBJS += libpcsxcore/new_dynarec/pcsxmem.o
 else
 CFLAGS += -DDRC_DISABLE
 endif
+
+CFLAGS += -DNEW_DYNAREC=$(USE_NEW_DYNAREC)
+
 OBJS += libpcsxcore/new_dynarec/emu_if.o
 libpcsxcore/new_dynarec/new_dynarec.o: libpcsxcore/new_dynarec/pcsxmem_inline.c
 ifdef DRC_DBG

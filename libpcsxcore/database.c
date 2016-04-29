@@ -56,6 +56,9 @@ void Apply_Hacks_Cdrom()
 		}
 	}
 
+	if (!NEW_DYNAREC)
+		return;
+
 	/* Dynarec game-specific hacks */
 	new_dynarec_hacks_pergame = 0;
 	Config.cycle_multiplier_override = 0;

@@ -190,7 +190,7 @@ void new_dyna_freeze(void *f, int mode)
 	//printf("drc: %d block info entries %s\n", size/8, mode ? "saved" : "loaded");
 }
 
-#ifndef DRC_DISABLE
+#if NEW_DYNAREC
 
 /* GTE stuff */
 void *gte_handlers[64];
@@ -418,10 +418,10 @@ R3000Acpu psxRec = {
 	ari64_shutdown
 };
 
-#else // if DRC_DISABLE
+#else // if !NEW_DYNAREC
 
 unsigned int address;
-int pending_exception, stop;
+int pending_exception;
 unsigned int next_interupt;
 int new_dynarec_did_compile;
 int cycle_multiplier_old;

@@ -102,7 +102,7 @@ int scanlines, scanline_level = 20;
 int soft_scaling, analog_deadzone; // for Caanoo
 int soft_filter;
 
-#ifndef HAVE_PRE_ARMV7
+#if NEW_DYNAREC && !defined(HAVE_PRE_ARMV7)
 #define DEFAULT_PSX_CLOCK (10000 / CYCLE_MULT_DEFAULT)
 #define DEFAULT_PSX_CLOCK_S "57"
 #else
@@ -306,7 +306,9 @@ static void menu_sync_config(void)
 		Config.PsxAuto = 0;
 		Config.PsxType = region - 1;
 	}
-	Config.cycle_multiplier = 10000 / psx_clock;
+
+	if (NEW_DYNAREC)
+		Config.cycle_multiplier = 10000 / psx_clock;
 
 	switch (in_type_sel1) {
 	case 1:  in_type1 = PSE_PAD_TYPE_ANALOGPAD; break;
@@ -457,7 +459,9 @@ static const struct {
 	CE_INTVAL(in_evdev_allow_abs_only),
 	CE_INTVAL(volume_boost),
 	CE_INTVAL(psx_clock),
+#if NEW_DYNAREC
 	CE_INTVAL(new_dynarec_hacks),
+#endif
 	CE_INTVAL(in_enable_vibration),
 };
 
@@ -1560,12 +1564,15 @@ static const char h_cfg_stalls[]  = "Will cause some games to run too fast";
 static menu_entry e_menu_speed_hacks[] =
 {
 #ifndef DRC_DISABLE
+#if NEW_DYNAREC
+	mee_range_h   ("PSX CPU clock, %%",        0, psx_clock, 1, 500, h_cfg_psxclk),
 	mee_onoff_h   ("Disable compat hacks",     0, new_dynarec_hacks, NDHACK_NO_COMPAT_HACKS, h_cfg_noch),
 	mee_onoff_h   ("Disable SMC checks",       0, new_dynarec_hacks, NDHACK_NO_SMC_CHECK, h_cfg_nosmc),
 	mee_onoff_h   ("Assume GTE regs unneeded", 0, new_dynarec_hacks, NDHACK_GTE_UNNEEDED, h_cfg_gteunn),
 	mee_onoff_h   ("Disable GTE flags",        0, new_dynarec_hacks, NDHACK_GTE_NO_FLAGS, h_cfg_gteflgs),
-#endif
 	mee_onoff_h   ("Disable CPU/GTE stalls",   0, menu_iopts[0], 1, h_cfg_stalls),
+#endif
+#endif
 	mee_end,
 };
 
@@ -2135,7 +2142,8 @@ static int romsel_run(void)
 
 	printf("selected file: %s\n", fname);
 
-	new_dynarec_clear_full();
+	if (NEW_DYNAREC)
+		new_dynarec_clear_full();
 
 	if (run_cd_image(fname) != 0)
 		return -1;
