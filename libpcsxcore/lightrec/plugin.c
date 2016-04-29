@@ -190,11 +190,19 @@ static void hw_write_half(struct lightrec_state *state,
 static void hw_write_word(struct lightrec_state *state,
 		const struct opcode *op, u32 mem, u32 val)
 {
-	psxRegs.cycle = state->current_cycle +
-		lightrec_cycles_of_block(state->current, op);
+	unsigned int cycles = lightrec_cycles_of_block(state->current, op);
+	u32 old_cycles = psxRegs.cycle;
+
+	psxRegs.cycle = state->current_cycle + cycles;
 
 	psxHwWrite32(mem, val);
 	state->block_exit_flags = LIGHTREC_EXIT_CHECK_INTERRUPT;
+
+	if (unlikely(old_cycles) != psxRegs.cycle) {
+		/* Calling psxHwWrite32 might update psxRegs.cycle - Make sure
+		 * here that state->current_cycle stays in sync. */
+		state->current_cycle = psxRegs.cycle - cycles;
+	}
 }
 
 static u8 hw_read_byte(struct lightrec_state *state,
