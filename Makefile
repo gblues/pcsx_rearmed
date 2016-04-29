@@ -56,6 +56,7 @@ endif
 libpcsxcore/psxbios.o: CFLAGS += -Wno-nonnull
 
 USE_NEW_DYNAREC=0
+USE_LIGHTREC=0
 
 # dynarec
 ifeq "$(USE_DYNAREC)" "1"
@@ -70,13 +71,15 @@ ifeq "$(USE_DYNAREC)" "1"
  USE_NEW_DYNAREC=1
  libpcsxcore/new_dynarec/new_dynarec.o: libpcsxcore/new_dynarec/assem_arm64.c
  else
- $(error no dynarec support for architecture $(ARCH))
+ USE_LIGHTREC=1
+ LDLIBS += -llightrec
+ OBJS += libpcsxcore/lightrec/plugin.o
  endif
 else
 CFLAGS += -DDRC_DISABLE
 endif
 
-CFLAGS += -DNEW_DYNAREC=$(USE_NEW_DYNAREC)
+CFLAGS += -DNEW_DYNAREC=$(USE_NEW_DYNAREC) -DLIGHTREC=$(USE_LIGHTREC)
 
 OBJS += libpcsxcore/new_dynarec/emu_if.o
 libpcsxcore/new_dynarec/new_dynarec.o: libpcsxcore/new_dynarec/pcsxmem_inline.c

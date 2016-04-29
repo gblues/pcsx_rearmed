@@ -59,6 +59,13 @@ extern int ready_to_go, g_emu_want_quit, g_emu_resetting;
 extern char hud_msg[64];
 extern int hud_new_msg;
 
+#if LIGHTREC
+extern int use_lightrec_interpreter;
+extern int lightrec_debug;
+extern int lightrec_very_debug;
+extern unsigned int lightrec_begin_cycles;
+#endif
+
 enum sched_action {
 	SACTION_NONE,
 	SACTION_ENTER_MENU,
