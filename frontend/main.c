@@ -701,7 +701,8 @@ int main(int argc, char *argv[])
 	else
 		menu_loop();
 
-	pl_start_watchdog();
+	if (!LIGHTREC || !(lightrec_debug || lightrec_very_debug))
+		pl_start_watchdog();
 
 	while (!g_emu_want_quit)
 	{
