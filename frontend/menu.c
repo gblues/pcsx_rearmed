@@ -305,7 +305,10 @@ static void menu_sync_config(void)
 		Config.PsxAuto = 0;
 		Config.PsxType = region - 1;
 	}
+
+#ifdef NEW_DYNAREC
 	cycle_multiplier = 10000 / psx_clock;
+#endif
 
 	switch (in_type_sel1) {
 	case 1:  in_type1 = PSE_PAD_TYPE_ANALOGPAD; break;
@@ -451,7 +454,9 @@ static const struct {
 	CE_INTVAL(in_evdev_allow_abs_only),
 	CE_INTVAL(volume_boost),
 	CE_INTVAL(psx_clock),
+#ifdef NEW_DYNAREC
 	CE_INTVAL(new_dynarec_hacks),
+#endif
 	CE_INTVAL(in_enable_vibration),
 };
 
@@ -1526,9 +1531,11 @@ static const char h_cfg_gteflgs[] = "Will cause graphical glitches";
 static menu_entry e_menu_speed_hacks[] =
 {
 	mee_range_h   ("PSX CPU clock, %%",        0, psx_clock, 1, 500, h_cfg_psxclk),
+#ifdef NEW_DYNAREC
 	mee_onoff_h   ("Disable SMC checks",       0, new_dynarec_hacks, NDHACK_NO_SMC_CHECK, h_cfg_nosmc),
 	mee_onoff_h   ("Assume GTE regs unneeded", 0, new_dynarec_hacks, NDHACK_GTE_UNNEEDED, h_cfg_gteunn),
 	mee_onoff_h   ("Disable GTE flags",        0, new_dynarec_hacks, NDHACK_GTE_NO_FLAGS, h_cfg_gteflgs),
+#endif
 	mee_end,
 };
 
@@ -2082,7 +2089,9 @@ static int romsel_run(void)
 
 	printf("selected file: %s\n", fname);
 
+#ifdef NEW_DYNAREC
 	new_dynarec_clear_full();
+#endif
 
 	if (run_cd_image(fname) != 0)
 		return -1;

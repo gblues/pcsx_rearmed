@@ -430,7 +430,7 @@ void do_insn_cmp() {}
 
 #ifdef DRC_DISABLE
 unsigned int address;
-int pending_exception, stop;
+int pending_exception;
 unsigned int next_interupt;
 int new_dynarec_did_compile;
 int cycle_multiplier;

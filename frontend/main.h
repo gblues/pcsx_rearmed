@@ -35,6 +35,7 @@
 extern char cfgfile_basename[MAXPATHLEN];
 
 extern int state_slot;
+extern int stop;
 
 /* emu_core_preinit - must be the very first call
  * emu_core_init - to be called after platform-specific setup */

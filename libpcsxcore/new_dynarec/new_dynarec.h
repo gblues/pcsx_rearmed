@@ -1,5 +1,4 @@
-#define NEW_DYNAREC 1
-
+#ifdef NEW_DYNAREC
 extern int pcaddr;
 extern int pending_exception;
 extern int stop;
@@ -20,3 +19,4 @@ void new_dynarec_load_blocks(const void *save, int size);
 
 void invalidate_all_pages();
 void invalidate_block(unsigned int block);
+#endif
