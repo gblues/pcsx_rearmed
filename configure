@@ -37,7 +37,7 @@ check_define_val()
 # setting options to "yes" or "no" will make that choice default,
 # "" means "autodetect".
 
-platform_list="generic pandora maemo caanoo libretro"
+platform_list="generic pandora maemo caanoo libretro opendingux"
 platform="generic"
 builtin_gpu_list="peops unai neon"
 builtin_gpu=""
@@ -113,6 +113,10 @@ set_platform()
   libretro)
     sound_drivers="libretro"
     need_libpicofe="no"
+    ;;
+  opendingux)
+    sound_drivers="alsa"
+    CFLAGS_GLES="-DMESA_EGL_NO_X11_HEADERS"
     ;;
   *)
     fail "unsupported platform: $platform"
@@ -299,7 +303,7 @@ if [ "$ram_fixed" = "yes" ]; then
 fi
 
 case "$platform" in
-generic)
+generic | opendingux)
   need_sdl="yes"
   ;;
 maemo)

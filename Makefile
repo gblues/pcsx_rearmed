@@ -175,6 +175,12 @@ OBJS += frontend/libpicofe/linux/in_evdev.o
 USE_PLUGIN_LIB = 1
 USE_FRONTEND = 1
 endif
+ifeq "$(PLATFORM)" "opendingux"
+OBJS += frontend/libpicofe/linux/in_evdev.o \
+		frontend/libpicofe/plat_dummy.o frontend/opendingux.o
+USE_PLUGIN_LIB = 1
+USE_FRONTEND = 1
+endif
 ifeq "$(PLATFORM)" "pandora"
 OBJS += frontend/libpicofe/pandora/plat.o
 OBJS += frontend/libpicofe/linux/fbdev.o frontend/libpicofe/linux/xenv.o
