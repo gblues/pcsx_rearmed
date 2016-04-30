@@ -24,7 +24,7 @@
 #include "plat.h"
 #include "revision.h"
 
-static const struct in_default_bind in_sdl_defbinds[] = {
+const struct in_default_bind in_sdl_defbinds[] __attribute__((weak)) = {
   { SDLK_UP,     IN_BINDTYPE_PLAYER12, DKEY_UP },
   { SDLK_DOWN,   IN_BINDTYPE_PLAYER12, DKEY_DOWN },
   { SDLK_LEFT,   IN_BINDTYPE_PLAYER12, DKEY_LEFT },
@@ -53,7 +53,7 @@ static const struct in_default_bind in_sdl_defbinds[] = {
   { 0, 0, 0 }
 };
 
-const struct menu_keymap in_sdl_key_map[] =
+const struct menu_keymap in_sdl_key_map[] __attribute__((weak)) =
 {
   { SDLK_UP,     PBTN_UP },
   { SDLK_DOWN,   PBTN_DOWN },
@@ -67,7 +67,7 @@ const struct menu_keymap in_sdl_key_map[] =
   { SDLK_RIGHTBRACKET, PBTN_R },
 };
 
-const struct menu_keymap in_sdl_joy_map[] =
+const struct menu_keymap in_sdl_joy_map[] __attribute__((weak)) =
 {
   { SDLK_UP,    PBTN_UP },
   { SDLK_DOWN,  PBTN_DOWN },
@@ -80,12 +80,15 @@ const struct menu_keymap in_sdl_joy_map[] =
   { SDLK_WORLD_3, PBTN_MA3 },
 };
 
+extern const char * const in_sdl_key_names[] __attribute__((weak));
+
 static const struct in_pdata in_sdl_platform_data = {
   .defbinds  = in_sdl_defbinds,
   .key_map   = in_sdl_key_map,
   .kmap_size = sizeof(in_sdl_key_map) / sizeof(in_sdl_key_map[0]),
   .joy_map   = in_sdl_joy_map,
   .jmap_size = sizeof(in_sdl_joy_map) / sizeof(in_sdl_joy_map[0]),
+  .key_names = in_sdl_key_names,
 };
 
 static int psx_w, psx_h;
