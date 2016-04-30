@@ -573,6 +573,9 @@ fi
 if [ "$have_c64x_dsp" = "yes" ]; then
   echo "HAVE_C64_TOOLS = 1" >> $config_mak
 fi
+if [ "$need_sdl" = "yes" ]; then
+  echo "NEED_SDL = 1" >> $config_mak
+fi
 
 # use pandora's skin (for now)
 test -e skin || ln -s frontend/pandora/skin skin
