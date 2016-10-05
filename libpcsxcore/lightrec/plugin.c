@@ -1,4 +1,3 @@
-#include <disassembler.h>
 #include <lightrec.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -13,6 +12,16 @@
 #include "../r3000a.h"
 
 #include "../frontend/main.h"
+
+#define ARRAY_SIZE(x) (sizeof(x) ? sizeof(x) / sizeof((x)[0]) : 0)
+
+#ifdef __GNUC__
+#	define likely(x)       __builtin_expect(!!(x),1)
+#	define unlikely(x)     __builtin_expect(!!(x),0)
+#else
+#	define likely(x)       (x)
+#	define unlikely(x)     (x)
+#endif
 
 static struct lightrec_state *lightrec_state;
 
@@ -116,12 +125,14 @@ static void cop_mtc_ctc(struct lightrec_state *state,
 			break;
 		case 12: /* Status */
 			psxRegs.CP0.n.Status = value;
-			state->block_exit_flags = LIGHTREC_EXIT_CHECK_INTERRUPT;
+			lightrec_set_exit_flags(state,
+					LIGHTREC_EXIT_CHECK_INTERRUPT);
 			break;
 		case 13: /* Cause */
 			psxRegs.CP0.n.Cause &= ~0x0300;
 			psxRegs.CP0.n.Cause |= value & 0x0300;
-			state->block_exit_flags = LIGHTREC_EXIT_CHECK_INTERRUPT;
+			lightrec_set_exit_flags(state,
+					LIGHTREC_EXIT_CHECK_INTERRUPT);
 			break;
 		default:
 			psxRegs.CP0.r[reg] = value;
@@ -172,68 +183,65 @@ static const struct lightrec_cop_ops cop_ops = {
 static void hw_write_byte(struct lightrec_state *state,
 		const struct opcode *op, u32 mem, u8 val)
 {
-	psxRegs.cycle = state->current_cycle +
-		lightrec_cycles_of_block(state->current, op);
+	psxRegs.cycle = lightrec_current_cycle_count(state, op);
 
 	psxHwWrite8(mem, val);
-	state->block_exit_flags = LIGHTREC_EXIT_CHECK_INTERRUPT;
+	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
 }
 
 static void hw_write_half(struct lightrec_state *state,
 		const struct opcode *op, u32 mem, u16 val)
 {
-	psxRegs.cycle = state->current_cycle +
-		lightrec_cycles_of_block(state->current, op);
+	psxRegs.cycle = lightrec_current_cycle_count(state, op);
 
 	psxHwWrite16(mem, val);
-	state->block_exit_flags = LIGHTREC_EXIT_CHECK_INTERRUPT;
+	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
 }
 
 static void hw_write_word(struct lightrec_state *state,
 		const struct opcode *op, u32 mem, u32 val)
 {
-	unsigned int cycles = lightrec_cycles_of_block(state->current, op);
 	u32 old_cycles = psxRegs.cycle;
+	u32 cycles_block_start = lightrec_current_cycle_count(state, NULL);
+	u32 cycles = lightrec_current_cycle_count(state, op);
 
-	psxRegs.cycle = state->current_cycle + cycles;
+	psxRegs.cycle = cycles;
 
 	psxHwWrite32(mem, val);
-	state->block_exit_flags = LIGHTREC_EXIT_CHECK_INTERRUPT;
+	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
 
-	if (unlikely(old_cycles) != psxRegs.cycle) {
+	if (unlikely(old_cycles != psxRegs.cycle)) {
 		/* Calling psxHwWrite32 might update psxRegs.cycle - Make sure
 		 * here that state->current_cycle stays in sync. */
-		state->current_cycle = psxRegs.cycle - cycles;
+		lightrec_reset_cycle_count(state,
+				psxRegs.cycle - (cycles - cycles_block_start));
 	}
 }
 
 static u8 hw_read_byte(struct lightrec_state *state,
 		const struct opcode *op, u32 mem)
 {
-	psxRegs.cycle = state->current_cycle +
-		lightrec_cycles_of_block(state->current, op);
+	psxRegs.cycle = lightrec_current_cycle_count(state, op);
 
-	state->block_exit_flags = LIGHTREC_EXIT_CHECK_INTERRUPT;
+	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
 	return psxHwRead8(mem);
 }
 
 static u16 hw_read_half(struct lightrec_state *state,
 		const struct opcode *op, u32 mem)
 {
-	psxRegs.cycle = state->current_cycle +
-		lightrec_cycles_of_block(state->current, op);
+	psxRegs.cycle = lightrec_current_cycle_count(state, op);
 
-	state->block_exit_flags = LIGHTREC_EXIT_CHECK_INTERRUPT;
+	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
 	return psxHwRead16(mem);
 }
 
 static u32 hw_read_word(struct lightrec_state *state,
 		const struct opcode *op, u32 mem)
 {
-	psxRegs.cycle = state->current_cycle +
-		lightrec_cycles_of_block(state->current, op);
+	psxRegs.cycle = lightrec_current_cycle_count(state, op);
 
-	state->block_exit_flags = LIGHTREC_EXIT_CHECK_INTERRUPT;
+	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
 	return psxHwRead32(mem);
 }
 
@@ -340,10 +348,6 @@ static int lightrec_plugin_init(void)
 			(uintptr_t) psxH);
 
 	signal(SIGPIPE, exit);
-
-	/* For now, exit Lightrec after each trace. */
-	lightrec_state->stop = 1;
-
 	return 0;
 }
 
@@ -408,23 +412,25 @@ static void lightrec_plugin_execute_block(void)
 	if (use_lightrec_interpreter) {
 		intExecuteBlock();
 	} else {
-		memcpy(lightrec_state->native_reg_cache, psxRegs.GPR.r,
-				sizeof(psxRegs.GPR.r));
+		u32 flags;
+
+		lightrec_restore_registers(lightrec_state, psxRegs.GPR.r);
 
 		psxRegs.pc = lightrec_execute(lightrec_state, psxRegs.pc);
-		psxRegs.cycle = lightrec_state->current_cycle;
+		psxRegs.cycle = lightrec_current_cycle_count(
+				lightrec_state, NULL);
 
-		memcpy(psxRegs.GPR.r, lightrec_state->native_reg_cache,
-				sizeof(psxRegs.GPR.r));
+		lightrec_dump_registers(lightrec_state, psxRegs.GPR.r);
 
-		if (lightrec_state->block_exit_flags ==
-				LIGHTREC_EXIT_SEGFAULT) {
+		flags = lightrec_exit_flags(lightrec_state);
+
+		if (flags & LIGHTREC_EXIT_SEGFAULT) {
 			fprintf(stderr, "Exiting at cycle 0x%08x\n",
 					psxRegs.cycle);
 			exit(1);
 		}
 
-		if (lightrec_state->block_exit_flags == LIGHTREC_EXIT_SYSCALL)
+		if (flags & LIGHTREC_EXIT_SYSCALL)
 			psxException(0x20, 0);
 	}
 
