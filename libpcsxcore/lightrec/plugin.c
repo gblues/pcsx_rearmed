@@ -399,6 +399,8 @@ static void lightrec_plugin_execute_block(void)
 {
 	u32 old_pc = psxRegs.pc;
 
+	lightrec_reset_cycle_count(lightrec_state, psxRegs.cycle);
+
 	if (use_lightrec_interpreter) {
 		intExecuteBlock();
 	} else {
