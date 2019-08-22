@@ -254,21 +254,11 @@ static struct lightrec_mem_map_ops hw_regs_ops = {
 	.lw = hw_read_word,
 };
 
-enum psx_map {
-	PSX_MAP_KERNEL_USER_RAM,
-	PSX_MAP_BIOS,
-	PSX_MAP_SCRATCH_PAD,
-	PSX_MAP_PARALLEL_PORT,
-	PSX_MAP_HW_REGISTERS,
-	PSX_MAP_CACHE_CONTROL,
-};
-
 static struct lightrec_mem_map lightrec_map[] = {
 	[PSX_MAP_KERNEL_USER_RAM] = {
 		/* Kernel and user memory */
 		.pc = 0x00000000,
 		.length = 0x200000,
-		.flags = MAP_IS_RWX,
 	},
 	[PSX_MAP_BIOS] = {
 		/* BIOS */
