@@ -331,15 +331,15 @@ static int lightrec_plugin_init(void)
 	 * SB/SH/SW/etc pointing to the RAM won't have any effect.
 	 * Since Lightrec does not emulate that, we just hack the BIOS here to
 	 * jump above that code. */
-	memset((void *) 0x1fc00250, 0, 0x28);
-	memset((void *) 0x1fc002a0, 0, 0x88);
-	*(u32 *) 0x1fc00320 = 0x240a1000;
-	*(u32 *) 0x1fc00324 = 0x240b0f80;
+	memset((void *)(psxR + 0x250), 0, 0x28);
+	memset((void *)(psxR + 0x2a0), 0, 0x88);
+	*(u32 *)(psxR + 0x320) = 0x240a1000;
+	*(u32 *)(psxR + 0x324) = 0x240b0f80;
 
-	memset((void *) 0x1fc01960, 0, 0x28);
-	memset((void *) 0x1fc019b0, 0, 0x88);
-	*(u32 *) 0x1fc01a30 = 0x240a1000;
-	*(u32 *) 0x1fc01a34 = 0x240b0f80;
+	memset((void *)(psxR + 0x1960), 0, 0x28);
+	memset((void *)(psxR + 0x19b0), 0, 0x88);
+	*(u32 *)(psxR + 0x1a30) = 0x240a1000;
+	*(u32 *)(psxR + 0x1a34) = 0x240b0f80;
 
 	fprintf(stderr, "M=0x%lx, P=0x%lx, R=0x%lx, H=0x%lx\n",
 			(uintptr_t) psxM,
