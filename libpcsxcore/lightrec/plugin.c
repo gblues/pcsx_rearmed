@@ -25,8 +25,6 @@
 
 static struct lightrec_state *lightrec_state;
 
-static char cache_control[512];
-
 static char *name = "pcsx";
 
 /* Unused for now */
@@ -84,165 +82,175 @@ static void (*cp2_ops[])(struct psxCP2Regs *) = {
 	[OP_CP2_NCCT] = gteNCCT,
 };
 
-static u32 cop_mfc_cfc(struct lightrec_state *state, int cp, u8 reg, bool cfc)
+static u32 cop0_mfc(struct lightrec_state *state, u8 reg)
 {
-	switch (cp) {
-	case 0:
-		return psxRegs.CP0.r[reg];
-	case 2:
-		if (cfc)
-			return psxRegs.CP2C.r[reg];
-		else
-			return MFC2(reg);
-	default:
-		fprintf(stderr, "Access to non-existing CP %i\n", cp);
-		return 0;
-	}
+	return psxRegs.CP0.r[reg];
 }
 
-static u32 cop_mfc(struct lightrec_state *state, int cp, u8 reg)
+static u32 cop2_mfc_cfc(struct lightrec_state *state, u8 reg, bool cfc)
 {
-	return cop_mfc_cfc(state, cp, reg, false);
+	if (cfc)
+		return psxRegs.CP2C.r[reg];
+	else
+		return MFC2(reg);
 }
 
-static u32 cop_cfc(struct lightrec_state *state, int cp, u8 reg)
+static u32 cop2_mfc(struct lightrec_state *state, u8 reg)
 {
-	return cop_mfc_cfc(state, cp, reg, true);
+	return cop2_mfc_cfc(state, reg, false);
 }
 
-static void cop_mtc_ctc(struct lightrec_state *state,
-		int cp, u8 reg, u32 value, bool ctc)
+static u32 cop2_cfc(struct lightrec_state *state, u8 reg)
 {
-	switch (cp) {
-	case 0:
-		switch (reg) {
-		case 1:
-		case 4:
-		case 8:
-		case 14:
-		case 15:
-			/* Those registers are read-only */
-			break;
-		case 12: /* Status */
-			psxRegs.CP0.n.Status = value;
-			lightrec_set_exit_flags(state,
-					LIGHTREC_EXIT_CHECK_INTERRUPT);
-			break;
-		case 13: /* Cause */
-			psxRegs.CP0.n.Cause &= ~0x0300;
-			psxRegs.CP0.n.Cause |= value & 0x0300;
-			lightrec_set_exit_flags(state,
-					LIGHTREC_EXIT_CHECK_INTERRUPT);
-			break;
-		default:
-			psxRegs.CP0.r[reg] = value;
-			break;
-		}
+	return cop2_mfc_cfc(state, reg, true);
+}
+
+static void cop0_mtc_ctc(struct lightrec_state *state,
+			 u8 reg, u32 value, bool ctc)
+{
+	switch (reg) {
+	case 1:
+	case 4:
+	case 8:
+	case 14:
+	case 15:
+		/* Those registers are read-only */
 		break;
-	case 2:
-		if (ctc)
-			CTC2(value, reg);
-		else
-			MTC2(value, reg);
+	case 12: /* Status */
+		if ((psxRegs.CP0.n.Status & ~value) & (1 << 16))
+			lightrec_invalidate_all(state);
+
+		psxRegs.CP0.n.Status = value;
+		lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
+		break;
+	case 13: /* Cause */
+		psxRegs.CP0.n.Cause &= ~0x0300;
+		psxRegs.CP0.n.Cause |= value & 0x0300;
+		lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
 		break;
 	default:
+		psxRegs.CP0.r[reg] = value;
 		break;
 	}
 }
 
-static void cop_mtc(struct lightrec_state *state, int cp, u8 reg, u32 value)
+static void cop2_mtc_ctc(struct lightrec_state *state,
+			 u8 reg, u32 value, bool ctc)
 {
-	cop_mtc_ctc(state, cp, reg, value, false);
+	if (ctc)
+		CTC2(value, reg);
+	else
+		MTC2(value, reg);
 }
 
-static void cop_ctc(struct lightrec_state *state, int cp, u8 reg, u32 value)
+static void cop0_mtc(struct lightrec_state *state, u8 reg, u32 value)
 {
-	cop_mtc_ctc(state, cp, reg, value, true);
+	cop0_mtc_ctc(state, reg, value, false);
 }
 
-static void cop_op(struct lightrec_state *state, int cp, u32 func)
+static void cop0_ctc(struct lightrec_state *state, u8 reg, u32 value)
+{
+	cop0_mtc_ctc(state, reg, value, true);
+}
+
+static void cop2_mtc(struct lightrec_state *state, u8 reg, u32 value)
+{
+	cop2_mtc_ctc(state, reg, value, false);
+}
+
+static void cop2_ctc(struct lightrec_state *state, u8 reg, u32 value)
+{
+	cop2_mtc_ctc(state, reg, value, true);
+}
+
+static void cop0_op(struct lightrec_state *state, u32 func)
+{
+	fprintf(stderr, "Invalid access to COP0\n");
+}
+
+static void cop2_op(struct lightrec_state *state, u32 func)
 {
 	psxRegs.code = func;
 
-	if (unlikely(cp != 2))
-		fprintf(stderr, "Access to invalid co-processor %i\n", cp);
-	else if (unlikely(!cp2_ops[func & 0x3f]))
+	if (unlikely(!cp2_ops[func & 0x3f]))
 		fprintf(stderr, "Invalid CP2 function %u\n", func);
 	else
 		cp2_ops[func & 0x3f](&psxRegs.CP2);
 }
 
-static const struct lightrec_cop_ops cop_ops = {
-	.mfc = cop_mfc,
-	.cfc = cop_cfc,
-	.mtc = cop_mtc,
-	.ctc = cop_ctc,
-	.op = cop_op,
-};
-
 static void hw_write_byte(struct lightrec_state *state,
 		const struct opcode *op, u32 mem, u8 val)
 {
-	psxRegs.cycle = lightrec_current_cycle_count(state, op);
+	psxRegs.cycle = lightrec_current_cycle_count(state);
 
 	psxHwWrite8(mem, val);
 	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
+
+	lightrec_reset_cycle_count(state, psxRegs.cycle);
 }
 
 static void hw_write_half(struct lightrec_state *state,
 		const struct opcode *op, u32 mem, u16 val)
 {
-	psxRegs.cycle = lightrec_current_cycle_count(state, op);
+	psxRegs.cycle = lightrec_current_cycle_count(state);
 
 	psxHwWrite16(mem, val);
 	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
+
+	lightrec_reset_cycle_count(state, psxRegs.cycle);
 }
 
 static void hw_write_word(struct lightrec_state *state,
 		const struct opcode *op, u32 mem, u32 val)
 {
-	u32 old_cycles = psxRegs.cycle;
-	u32 cycles_block_start = lightrec_current_cycle_count(state, NULL);
-	u32 cycles = lightrec_current_cycle_count(state, op);
-
-	psxRegs.cycle = cycles;
+	psxRegs.cycle = lightrec_current_cycle_count(state);
 
 	psxHwWrite32(mem, val);
 	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
 
-	if (unlikely(old_cycles != psxRegs.cycle)) {
-		/* Calling psxHwWrite32 might update psxRegs.cycle - Make sure
-		 * here that state->current_cycle stays in sync. */
-		lightrec_reset_cycle_count(state,
-				psxRegs.cycle - (cycles - cycles_block_start));
-	}
+	lightrec_reset_cycle_count(state, psxRegs.cycle);
 }
 
 static u8 hw_read_byte(struct lightrec_state *state,
 		const struct opcode *op, u32 mem)
 {
-	psxRegs.cycle = lightrec_current_cycle_count(state, op);
+	u8 val;
+
+	psxRegs.cycle = lightrec_current_cycle_count(state);
 
 	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
-	return psxHwRead8(mem);
+	val = psxHwRead8(mem);
+	lightrec_reset_cycle_count(state, psxRegs.cycle);
+
+	return val;
 }
 
 static u16 hw_read_half(struct lightrec_state *state,
 		const struct opcode *op, u32 mem)
 {
-	psxRegs.cycle = lightrec_current_cycle_count(state, op);
+	u16 val;
+
+	psxRegs.cycle = lightrec_current_cycle_count(state);
 
 	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
-	return psxHwRead16(mem);
+	val = psxHwRead16(mem);
+	lightrec_reset_cycle_count(state, psxRegs.cycle);
+
+	return val;
 }
 
 static u32 hw_read_word(struct lightrec_state *state,
 		const struct opcode *op, u32 mem)
 {
-	psxRegs.cycle = lightrec_current_cycle_count(state, op);
+	u32 val;
+
+	psxRegs.cycle = lightrec_current_cycle_count(state);
 
 	lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
-	return psxHwRead32(mem);
+	val = psxHwRead32(mem);
+	lightrec_reset_cycle_count(state, psxRegs.cycle);
+
+	return val;
 }
 
 static struct lightrec_mem_map_ops hw_regs_ops = {
@@ -252,6 +260,25 @@ static struct lightrec_mem_map_ops hw_regs_ops = {
 	.lb = hw_read_byte,
 	.lh = hw_read_half,
 	.lw = hw_read_word,
+};
+
+static u32 cache_ctrl;
+
+static void cache_ctrl_write_word(struct lightrec_state *state,
+				  const struct opcode *op, u32 mem, u32 val)
+{
+	cache_ctrl = val;
+}
+
+static u32 cache_ctrl_read_word(struct lightrec_state *state,
+				const struct opcode *op, u32 mem)
+{
+	return cache_ctrl;
+}
+
+static struct lightrec_mem_map_ops cache_ctrl_ops = {
+	.sw = cache_ctrl_write_word,
+	.lw = cache_ctrl_read_word,
 };
 
 static struct lightrec_mem_map lightrec_map[] = {
@@ -283,26 +310,43 @@ static struct lightrec_mem_map lightrec_map[] = {
 	},
 	[PSX_MAP_CACHE_CONTROL] = {
 		/* Cache control */
-		.pc = 0x5ffe0000,
-		.length = sizeof(cache_control),
-		.address = &cache_control,
+		.pc = 0x5ffe0130,
+		.length = 4,
+		.ops = &cache_ctrl_ops,
 	},
 
 	/* Mirrors of the kernel/user memory */
-	{
+	[PSX_MAP_MIRROR1] = {
 		.pc = 0x00200000,
 		.length = 0x200000,
 		.mirror_of = &lightrec_map[PSX_MAP_KERNEL_USER_RAM],
 	},
-	{
+	[PSX_MAP_MIRROR2] = {
 		.pc = 0x00400000,
 		.length = 0x200000,
 		.mirror_of = &lightrec_map[PSX_MAP_KERNEL_USER_RAM],
 	},
-	{
+	[PSX_MAP_MIRROR3] = {
 		.pc = 0x00600000,
 		.length = 0x200000,
 		.mirror_of = &lightrec_map[PSX_MAP_KERNEL_USER_RAM],
+	},
+};
+
+static const struct lightrec_ops lightrec_ops = {
+	.cop0_ops = {
+		.mfc = cop0_mfc,
+		.cfc = cop0_mfc,
+		.mtc = cop0_mtc,
+		.ctc = cop0_ctc,
+		.op = cop0_op,
+	},
+	.cop2_ops = {
+		.mfc = cop2_mfc,
+		.cfc = cop2_cfc,
+		.mtc = cop2_mtc,
+		.ctc = cop2_ctc,
+		.op = cop2_op,
 	},
 };
 
@@ -311,25 +355,11 @@ static int lightrec_plugin_init(void)
 	lightrec_map[PSX_MAP_KERNEL_USER_RAM].address = psxM;
 	lightrec_map[PSX_MAP_BIOS].address = psxR;
 	lightrec_map[PSX_MAP_SCRATCH_PAD].address = psxH;
-	lightrec_map[PSX_MAP_PARALLEL_PORT].address = psxM + 0x200000;
+	lightrec_map[PSX_MAP_PARALLEL_PORT].address = psxP;
 
 	lightrec_state = lightrec_init(name,
 			lightrec_map, ARRAY_SIZE(lightrec_map),
-			&cop_ops);
-
-	/* At some point, the BIOS disables the writes to the RAM - every
-	 * SB/SH/SW/etc pointing to the RAM won't have any effect.
-	 * Since Lightrec does not emulate that, we just hack the BIOS here to
-	 * jump above that code. */
-	memset((void *)(psxR + 0x250), 0, 0x28);
-	memset((void *)(psxR + 0x2a0), 0, 0x88);
-	*(u32 *)(psxR + 0x320) = 0x240a1000;
-	*(u32 *)(psxR + 0x324) = 0x240b0f80;
-
-	memset((void *)(psxR + 0x1960), 0, 0x28);
-	memset((void *)(psxR + 0x19b0), 0, 0x88);
-	*(u32 *)(psxR + 0x1a30) = 0x240a1000;
-	*(u32 *)(psxR + 0x1a34) = 0x240b0f80;
+			&lightrec_ops);
 
 	fprintf(stderr, "M=0x%lx, P=0x%lx, R=0x%lx, H=0x%lx\n",
 			(uintptr_t) psxM,
@@ -340,8 +370,6 @@ static int lightrec_plugin_init(void)
 	signal(SIGPIPE, exit);
 	return 0;
 }
-
-extern void intExecuteBlock(void);
 
 static u32 hash_calculate(const void *buffer, u32 count)
 {
@@ -395,30 +423,31 @@ static void print_for_big_ass_debugger(void)
 	printf("\n");
 }
 
+
+extern void intExecuteBlock();
+
 static void lightrec_plugin_execute_block(void)
 {
 	u32 old_pc = psxRegs.pc;
-
-	lightrec_reset_cycle_count(lightrec_state, psxRegs.cycle);
+	u32 flags;
 
 	if (use_lightrec_interpreter) {
 		intExecuteBlock();
 	} else {
-		u32 flags;
-
+		lightrec_reset_cycle_count(lightrec_state, psxRegs.cycle);
 		lightrec_restore_registers(lightrec_state, psxRegs.GPR.r);
 
-		psxRegs.pc = lightrec_execute(lightrec_state, psxRegs.pc);
-		psxRegs.cycle = lightrec_current_cycle_count(
-				lightrec_state, NULL);
+		//psxRegs.pc = lightrec_run_interpreter(lightrec_state, psxRegs.pc);
+		psxRegs.pc = lightrec_execute_one(lightrec_state, psxRegs.pc);
+
+		psxRegs.cycle = lightrec_current_cycle_count(lightrec_state);
 
 		lightrec_dump_registers(lightrec_state, psxRegs.GPR.r);
-
 		flags = lightrec_exit_flags(lightrec_state);
 
 		if (flags & LIGHTREC_EXIT_SEGFAULT) {
 			fprintf(stderr, "Exiting at cycle 0x%08x\n",
-					psxRegs.cycle);
+				psxRegs.cycle);
 			exit(1);
 		}
 
@@ -463,6 +492,20 @@ static void lightrec_plugin_reset(void)
 {
 	lightrec_plugin_shutdown();
 	lightrec_plugin_init();
+
+	/* At some point, the BIOS disables the writes to the RAM - every
+	 * SB/SH/SW/etc pointing to the RAM won't have any effect.
+	 * Since Lightrec does not emulate that, we just hack the BIOS here to
+	 * jump above that code. */
+	memset((void *)(psxR + 0x250), 0, 0x28);
+	memset((void *)(psxR + 0x2a0), 0, 0x88);
+	*(u32 *)(psxR + 0x320) = 0x240a1000;
+	*(u32 *)(psxR + 0x324) = 0x240b0f80;
+
+	memset((void *)(psxR + 0x1960), 0, 0x28);
+	memset((void *)(psxR + 0x19b0), 0, 0x88);
+	*(u32 *)(psxR + 0x1a30) = 0x240a1000;
+	*(u32 *)(psxR + 0x1a34) = 0x240b0f80;
 }
 
 R3000Acpu psxRec =
