@@ -671,7 +671,7 @@ int main(int argc, char *argv[])
 		menu_loop();
 
 #ifdef LIGHTREC
-	if (!lightrec_very_debug)
+	if (!lightrec_debug && !lightrec_very_debug)
 		pl_start_watchdog();
 #else
 	pl_start_watchdog();
