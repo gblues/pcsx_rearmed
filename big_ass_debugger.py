@@ -39,6 +39,11 @@ def read_loop(p1, p2):
 						line1 = get_next_line(p1)
 						cycle1 = int(line1[6:16], 16)
 
+					while cycle1 > cycle2:
+						print line2[:-1] + " - Dynarec lagging behind"
+						line2 = get_next_line(p2)
+						cycle2 = int(line2[6:16], 16)
+
 					if cycle1 != cycle2:
 						print "Mismatch!"
 						print line1[:-1] + " - Interpreter"
@@ -54,6 +59,11 @@ def read_loop(p1, p2):
 						print line2[:-1] + " - Dynarec lagging behind"
 						line2 = get_next_line(p2)
 						cycle2 = int(line2[6:16], 16)
+
+					while cycle1 < cycle2:
+						print line1[:-1] + " - Interpreter lagging behind"
+						line1 = get_next_line(p1)
+						cycle1 = int(line1[6:16], 16)
 
 					if cycle1 != cycle2:
 						print "Mismatch!"
