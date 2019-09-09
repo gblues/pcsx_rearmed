@@ -33,6 +33,8 @@ static int branch = 0;
 static int branch2 = 0;
 static u32 branchPC;
 
+static u32 block_cycles;
+
 // These macros are used to assemble the repassembler functions
 
 #ifdef PSXCPU_LOG
@@ -369,7 +371,7 @@ static int psxDelayBranchExec(u32 tar) {
 
 	branch = 0;
 	psxRegs.pc = tar;
-	psxRegs.cycle += BIAS;
+	block_cycles += BIAS;
 	psxLightrecBranchTest();
 	return 1;
 }
@@ -395,7 +397,7 @@ static int psxDelayBranchTest(u32 tar1) {
 		return psxDelayBranchExec(tar2);
 	}
 	debugI();
-	psxRegs.cycle += BIAS;
+	block_cycles += BIAS;
 
 	/*
 	 * Got a branch at tar1:
@@ -408,7 +410,7 @@ static int psxDelayBranchTest(u32 tar1) {
 		return psxDelayBranchExec(tmp1);
 	}
 	debugI();
-	psxRegs.cycle += BIAS;
+	block_cycles += BIAS;
 
 	/*
 	 * Got a branch at tar2:
@@ -436,7 +438,7 @@ static void doBranch(u32 tar) {
 	debugI();
 
 	psxRegs.pc += 4;
-	psxRegs.cycle += BIAS;
+	block_cycles += BIAS;
 
 	// check for load delay
 	tmp = psxRegs.code >> 26;
@@ -934,8 +936,10 @@ void intExecute() {
 }
 
 void intExecuteBlock() {
+	block_cycles = 0;
 	branch2 = 0;
 	while (!branch2) execI();
+	psxRegs.cycle += block_cycles;
 }
 
 static void intClear(u32 Addr, u32 Size) {
@@ -954,9 +958,10 @@ void execI() {
 	if (Config.Debug) ProcessDebug();
 
 	psxRegs.pc += 4;
-	psxRegs.cycle += BIAS;
 
 	psxBSC[psxRegs.code >> 26]();
+
+	block_cycles += BIAS;
 }
 
 R3000Acpu psxInt = {
