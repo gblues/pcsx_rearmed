@@ -1,9 +1,11 @@
+#include <endian.h>
 #include <lightrec.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
 
 #include "../cdrom.h"
+#include "../gpu.h"
 #include "../gte.h"
 #include "../mdec.h"
 #include "../psxdma.h"
@@ -371,6 +373,25 @@ static int lightrec_plugin_init(void)
 	return 0;
 }
 
+static u32 hash_calculate_le(const void *buffer, u32 count)
+{
+	unsigned int i;
+	u32 *data = (u32 *) buffer;
+	u32 hash = 0xffffffff;
+
+	count /= 4;
+	for(i = 0; i < count; ++i) {
+		hash += le32toh(data[i]);
+		hash += (hash << 10);
+		hash ^= (hash >> 6);
+	}
+
+	hash += (hash << 3);
+	hash ^= (hash >> 11);
+	hash += (hash << 15);
+	return hash;
+}
+
 static u32 hash_calculate(const void *buffer, u32 count)
 {
 	unsigned int i;
@@ -399,11 +420,11 @@ static void print_for_big_ass_debugger(void)
 
 	if (lightrec_very_debug)
 		printf(" RAM 0x%08x SCRATCH 0x%08x HW 0x%08x",
-				hash_calculate(psxM, 0x200000),
-				hash_calculate(psxH, 0x400),
-				hash_calculate(psxH + 0x1000, 0x2000));
+				hash_calculate_le(psxM, 0x200000),
+				hash_calculate_le(psxH, 0x400),
+				hash_calculate_le(psxH + 0x1000, 0x2000));
 
-	printf(" CP0 0x%08x CP2D 0x%08x CP2C 0x%08x INT 0x%04x INTCYCLE 0x%08x",
+	printf(" CP0 0x%08x CP2D 0x%08x CP2C 0x%08x INT 0x%04x INTCYCLE 0x%08x GPU 0x%08x",
 			hash_calculate(&psxRegs.CP0.r,
 				sizeof(psxRegs.CP0.r)),
 			hash_calculate(&psxRegs.CP2D.r,
@@ -412,7 +433,8 @@ static void print_for_big_ass_debugger(void)
 				sizeof(psxRegs.CP2C.r)),
 			psxRegs.interrupt,
 			hash_calculate(psxRegs.intCycle,
-				sizeof(psxRegs.intCycle)));
+				sizeof(psxRegs.intCycle)),
+			le32toh(HW_GPU_STATUS));
 
 	if (lightrec_very_debug)
 		for (i = 0; i < 34; i++)
@@ -499,13 +521,13 @@ static void lightrec_plugin_reset(void)
 	 * jump above that code. */
 	memset((void *)(psxR + 0x250), 0, 0x28);
 	memset((void *)(psxR + 0x2a0), 0, 0x88);
-	*(u32 *)(psxR + 0x320) = 0x240a1000;
-	*(u32 *)(psxR + 0x324) = 0x240b0f80;
+	*(u32 *)(psxR + 0x320) = htole32(0x240a1000);
+	*(u32 *)(psxR + 0x324) = htole32(0x240b0f80);
 
 	memset((void *)(psxR + 0x1960), 0, 0x28);
 	memset((void *)(psxR + 0x19b0), 0, 0x88);
-	*(u32 *)(psxR + 0x1a30) = 0x240a1000;
-	*(u32 *)(psxR + 0x1a34) = 0x240b0f80;
+	*(u32 *)(psxR + 0x1a30) = htole32(0x240a1000);
+	*(u32 *)(psxR + 0x1a34) = htole32(0x240b0f80);
 }
 
 R3000Acpu psxRec =
