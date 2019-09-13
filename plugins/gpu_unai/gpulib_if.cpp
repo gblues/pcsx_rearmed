@@ -178,7 +178,7 @@ int do_cmd_list(unsigned int *list, int list_len, int *last_cmd)
 
   for (; list < list_end; list += 1 + len)
   {
-    cmd = *list >> 24;
+    cmd = LE32TOH(*list) >> 24;
     len = cmd_lengths[cmd];
     if (list + 1 + len > list_end) {
       cmd = -1;
@@ -186,9 +186,9 @@ int do_cmd_list(unsigned int *list, int list_len, int *last_cmd)
     }
 
     #define PRIM cmd
-    PacketBuffer.U4[0] = list[0];
+    PacketBuffer.U4[0] = LE32TOH(list[0]);
     for (i = 1; i <= len; i++)
-      PacketBuffer.U4[i] = list[i];
+      PacketBuffer.U4[i] = LE32TOH(list[i]);
 
     switch (cmd)
     {
@@ -304,7 +304,7 @@ int do_cmd_list(unsigned int *list, int list_len, int *last_cmd)
         while(1)
         {
           PacketBuffer.U4[1] = PacketBuffer.U4[2];
-          PacketBuffer.U4[2] = *list_position++;
+          PacketBuffer.U4[2] = LE32TOH(*list_position++);
           gpuDrawLF(gpuPixelDrivers [ (Blending_Mode | Masking | Blending | (PixelMSB>>3)) >> 1]);
 
           num_vertexes++;
@@ -312,7 +312,7 @@ int do_cmd_list(unsigned int *list, int list_len, int *last_cmd)
             cmd = -1;
             goto breakloop;
           }
-          if((*list_position & 0xf000f000) == 0x50005000)
+          if((*list_position & HTOLE32(0xf000f000)) == HTOLE32(0x50005000))
             break;
         }
 
@@ -338,8 +338,8 @@ int do_cmd_list(unsigned int *list, int list_len, int *last_cmd)
         {
           PacketBuffer.U4[0] = PacketBuffer.U4[2];
           PacketBuffer.U4[1] = PacketBuffer.U4[3];
-          PacketBuffer.U4[2] = *list_position++;
-          PacketBuffer.U4[3] = *list_position++;
+          PacketBuffer.U4[2] = LE32TOH(*list_position++);
+          PacketBuffer.U4[3] = LE32TOH(*list_position++);
           gpuDrawLG(gpuPixelDrivers [ (Blending_Mode | Masking | Blending | (PixelMSB>>3)) >> 1]);
 
           num_vertexes++;
@@ -347,7 +347,7 @@ int do_cmd_list(unsigned int *list, int list_len, int *last_cmd)
             cmd = -1;
             goto breakloop;
           }
-          if((*list_position & 0xf000f000) == 0x50005000)
+          if((*list_position & HTOLE32(0xf000f000)) == HTOLE32(0x50005000))
             break;
         }
 
@@ -440,8 +440,8 @@ int do_cmd_list(unsigned int *list, int list_len, int *last_cmd)
 #ifdef TEST
       case 0xA0:          //  sys -> vid
       {
-        u32 load_width = list[2] & 0xffff;
-        u32 load_height = list[2] >> 16;
+        u32 load_width = LE32TOH(list[2]) & 0xffff;
+        u32 load_height = LE32TOH(list[2]) >> 16;
         u32 load_size = load_width * load_height;
 
         len += load_size / 2;
