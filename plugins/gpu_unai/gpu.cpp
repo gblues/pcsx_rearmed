@@ -275,7 +275,7 @@ void  GPU_writeDataMem(u32* dmaAddress, s32 dmaCount)
 			while (dmaCount)
 			{
 				dmaCount--;
-				data = *dmaAddress++;
+				data = SWAP32(*dmaAddress++);
 				if ((&pvram[px])>(VIDEO_END)) pvram-=512*1024;
 				pvram[px] = data;
 				if (++px>=x_end) 
@@ -306,7 +306,7 @@ void  GPU_writeDataMem(u32* dmaAddress, s32 dmaCount)
 		}
 		else
 		{
-			data = *dmaAddress++;
+			data = SWAP32(*dmaAddress++);
 			dmaCount--;
 			gpuCheckPacket(data);
 		}
@@ -349,7 +349,7 @@ long GPU_dmaChain(u32* baseAddr, u32 dmaVAddr)
 		address = (baseAddr + (dmaVAddr >> 2));
 		if(DMACommandCounter++ > 2000000) break;
 		if(CheckForEndlessLoop(address)) break;
-		data = *address++;
+		data = SWAP32(*address++);
 		count = (data >> 24);
 		offset = data & 0x001FFFFF;
 		if (dmaVAddr != offset) dmaVAddr = offset;
@@ -444,7 +444,7 @@ void  GPU_readDataMem(u32* dmaAddress, s32 dmaCount)
 		// higher 16 bit (always, even if it's an odd width)
 		data |= (u32)(pvram[px])<<16;
 		
-		*dmaAddress++ = data;
+		*dmaAddress++ = SWAP32(data);
 
 		if (++px>=x_end) 
 		{
