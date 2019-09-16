@@ -1,17 +1,19 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from time import sleep
+from sys import argv
+import subprocess
 
 def get_next_line(p):
 	line = ""
 
 	while line[0:5] != "CYCLE":
-		line = p.readline()
+		line = p.readline().decode()
 
 		if (len(line) == 0):
 			sleep(0.001)
 		elif line[0:5] != "CYCLE":
-			print line[:-1]
+			print(line[:-1])
 
 	return line
 
@@ -24,7 +26,6 @@ def read_loop(p1, p2):
 
 		if line1 != line2:
 			# TODO: Proper matching
-			# TODO: Have a way to print registers
 
 			# Lightrec might be lagging behind
 			if line1[0:16] != line2[0:16]:
@@ -32,65 +33,80 @@ def read_loop(p1, p2):
 				cycle2 = int(line2[6:16], 16)
 
 				if cycle1 < cycle2:
-					print line2[:-1] + " - Dynarec"
+					#print(line2[:-1] + " - Dynarec")
 
 					while cycle1 < cycle2:
-						print line1[:-1] + " - Interpreter lagging behind"
+						print(line1[:16] + " - Interpreter lagging behind")
 						line1 = get_next_line(p1)
 						cycle1 = int(line1[6:16], 16)
 
 					while cycle1 > cycle2:
-						print line2[:-1] + " - Dynarec lagging behind"
+						print(line2[:16] + " - Dynarec lagging behind")
 						line2 = get_next_line(p2)
 						cycle2 = int(line2[6:16], 16)
 
 					if cycle1 != cycle2:
-						print "Mismatch!"
-						print line1[:-1] + " - Interpreter"
-						print line2[:-1] + " - Dynarec"
-						print "State before the mismatch:"
-						print oldline
+						print("Mismatch!")
+						print(line1[:-1] + " - Interpreter")
+						print(line2[:-1] + " - Dynarec")
+						print("State before the mismatch:")
+						print(oldline)
 						break
 
 				if cycle2 < cycle1:
-					print line1[:-1] + " - Interpreter"
+					#print(line1[:-1] + " - Interpreter")
 
 					while cycle1 > cycle2:
-						print line2[:-1] + " - Dynarec lagging behind"
+						print(line2[:16] + " - Dynarec lagging behind")
 						line2 = get_next_line(p2)
 						cycle2 = int(line2[6:16], 16)
 
 					while cycle1 < cycle2:
-						print line1[:-1] + " - Interpreter lagging behind"
+						print(line1[:16] + " - Interpreter lagging behind")
 						line1 = get_next_line(p1)
 						cycle1 = int(line1[6:16], 16)
 
 					if cycle1 != cycle2:
-						print "Mismatch!"
-						print "INT: " + line1[:-1]
-						print "JIT: " + line2[:-1]
-						print "State before the mismatch:"
-						print oldline
+						print("Mismatch!")
+						print("INT: " + line1[:-1])
+						print("JIT: " + line2[:-1])
+						print("State before the mismatch:")
+						print(oldline)
 						break
 
 				oldline = line1[:-1]
-				print oldline + " - Match"
+				print(oldline[:16] + " - Match")
 				continue
 
-			print "Mismatch!"
-			print line1[:-1] + " - Interpreter"
-			print line2[:-1] + " - Dynarec"
-			print "State before the mismatch:"
-			print oldline
+			inter = line1[:-1]
+			dynarec = line2[:-1]
+
+			print("\nMismatch!")
+			print(inter + " - Interpreter")
+			print(dynarec + " - Dynarec")
+			print("State before the mismatch:")
+			print(oldline)
+
+			inter_array = inter.split(" ")
+			inter_dict = dict(zip(inter_array[::2], inter_array[1::2]))
+			dynarec_array = dynarec.split(" ")
+			dynarec_dict = dict(zip(dynarec_array[::2], dynarec_array[1::2]))
+
+			diff = dict([(k, (inter_dict[k], dynarec_dict[k])) for k in inter_dict.keys() if inter_dict[k] != dynarec_dict[k]])
+
+			print("\nDifferences:")
+			print("{:15}{:15}{:15}".format("", "Interpreter", "Dynarec"))
+			for k in diff:
+				print("{:15}{:15}{:15}".format(k, diff[k][0], diff[k][1]))
+
 			break
 		else:
 			oldline = line1[:-1]
-#			print oldline + " - Match"
 
 def main():
-	with open("/tmp/pcsx_int", "r") as p1:
-		with open("/tmp/pcsx_jit", "r") as p2:
-			read_loop(p1, p2)
+	with subprocess.Popen(['./pcsx', '-lightrec-debug', '-lightrec-interpreter'] + argv[1:], stdout=subprocess.PIPE, bufsize=1) as fifo_int:
+		with subprocess.Popen(['./pcsx', '-lightrec-debug'] + argv[1:], stdout=subprocess.PIPE, bufsize=1) as fifo_jit:
+			read_loop(fifo_int.stdout, fifo_jit.stdout)
 
 if __name__ == '__main__':
 	main()

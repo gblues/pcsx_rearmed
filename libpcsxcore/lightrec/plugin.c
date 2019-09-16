@@ -412,6 +412,19 @@ static u32 hash_calculate(const void *buffer, u32 count)
 	return hash;
 }
 
+static const char * const mips_regs[] = {
+	"zero",
+	"at",
+	"v0", "v1",
+	"a0", "a1", "a2", "a3",
+	"t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
+	"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",
+	"t8", "t9",
+	"k0", "k1",
+	"gp", "sp", "fp", "ra",
+	"lo", "hi",
+};
+
 static void print_for_big_ass_debugger(void)
 {
 	unsigned int i;
@@ -439,7 +452,7 @@ static void print_for_big_ass_debugger(void)
 
 	if (lightrec_very_debug)
 		for (i = 0; i < 34; i++)
-			printf(" GPR[%i] 0x%08x", i, psxRegs.GPR.r[i]);
+			printf(" %s 0x%08x", mips_regs[i], psxRegs.GPR.r[i]);
 	else
 		printf(" GPR 0x%08x", hash_calculate(&psxRegs.GPR.r,
 					sizeof(psxRegs.GPR.r)));
