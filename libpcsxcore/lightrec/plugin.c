@@ -181,8 +181,7 @@ static void cop2_op(struct lightrec_state *state, u32 func)
 		cp2_ops[func & 0x3f](&psxRegs.CP2);
 }
 
-static void hw_write_byte(struct lightrec_state *state,
-		const struct opcode *op, u32 mem, u8 val)
+static void hw_write_byte(struct lightrec_state *state, u32 mem, u8 val)
 {
 	psxRegs.cycle = lightrec_current_cycle_count(state);
 
@@ -192,8 +191,7 @@ static void hw_write_byte(struct lightrec_state *state,
 	lightrec_reset_cycle_count(state, psxRegs.cycle);
 }
 
-static void hw_write_half(struct lightrec_state *state,
-		const struct opcode *op, u32 mem, u16 val)
+static void hw_write_half(struct lightrec_state *state, u32 mem, u16 val)
 {
 	psxRegs.cycle = lightrec_current_cycle_count(state);
 
@@ -203,8 +201,7 @@ static void hw_write_half(struct lightrec_state *state,
 	lightrec_reset_cycle_count(state, psxRegs.cycle);
 }
 
-static void hw_write_word(struct lightrec_state *state,
-		const struct opcode *op, u32 mem, u32 val)
+static void hw_write_word(struct lightrec_state *state, u32 mem, u32 val)
 {
 	psxRegs.cycle = lightrec_current_cycle_count(state);
 
@@ -214,8 +211,7 @@ static void hw_write_word(struct lightrec_state *state,
 	lightrec_reset_cycle_count(state, psxRegs.cycle);
 }
 
-static u8 hw_read_byte(struct lightrec_state *state,
-		const struct opcode *op, u32 mem)
+static u8 hw_read_byte(struct lightrec_state *state, u32 mem)
 {
 	u8 val;
 
@@ -228,8 +224,7 @@ static u8 hw_read_byte(struct lightrec_state *state,
 	return val;
 }
 
-static u16 hw_read_half(struct lightrec_state *state,
-		const struct opcode *op, u32 mem)
+static u16 hw_read_half(struct lightrec_state *state, u32 mem)
 {
 	u16 val;
 
@@ -242,8 +237,7 @@ static u16 hw_read_half(struct lightrec_state *state,
 	return val;
 }
 
-static u32 hw_read_word(struct lightrec_state *state,
-		const struct opcode *op, u32 mem)
+static u32 hw_read_word(struct lightrec_state *state, u32 mem)
 {
 	u32 val;
 
@@ -267,14 +261,12 @@ static struct lightrec_mem_map_ops hw_regs_ops = {
 
 static u32 cache_ctrl;
 
-static void cache_ctrl_write_word(struct lightrec_state *state,
-				  const struct opcode *op, u32 mem, u32 val)
+static void cache_ctrl_write_word(struct lightrec_state *state, u32 mem, u32 val)
 {
 	cache_ctrl = val;
 }
 
-static u32 cache_ctrl_read_word(struct lightrec_state *state,
-				const struct opcode *op, u32 mem)
+static u32 cache_ctrl_read_word(struct lightrec_state *state, u32 mem)
 {
 	return cache_ctrl;
 }
