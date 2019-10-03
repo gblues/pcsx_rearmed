@@ -454,6 +454,8 @@ static void print_for_big_ass_debugger(void)
 
 extern void intExecuteBlock();
 
+static u32 old_cycle_counter;
+
 static void lightrec_plugin_execute_block(void)
 {
 	u32 old_pc = psxRegs.pc;
@@ -494,6 +496,18 @@ static void lightrec_plugin_execute_block(void)
 		/* Handle software interrupts */
 		psxRegs.CP0.n.Cause &= ~0x7c;
 		psxException(psxRegs.CP0.n.Cause, 0);
+	}
+
+	if ((psxRegs.cycle & ~0xfffffff) != old_cycle_counter) {
+		printf("RAM usage: Lightrec %u KiB, IR %u KiB, CODE %u KiB, "
+		       "MIPS %u KiB, TOTAL %u KiB, avg. IPI %f\n",
+		       lightrec_get_mem_usage(MEM_FOR_LIGHTREC) / 1024,
+		       lightrec_get_mem_usage(MEM_FOR_IR) / 1024,
+		       lightrec_get_mem_usage(MEM_FOR_CODE) / 1024,
+		       lightrec_get_mem_usage(MEM_FOR_MIPS_CODE) / 1024,
+		       lightrec_get_total_mem_usage() / 1024,
+		       lightrec_get_average_ipi());
+		old_cycle_counter = psxRegs.cycle & ~0xfffffff;
 	}
 }
 
