@@ -17,6 +17,27 @@ def get_next_line(p):
 
 	return line
 
+def print_differences(inter, dynarec):
+	inter_array = inter.split(" ")
+	inter_dict = dict(zip(inter_array[::2], inter_array[1::2]))
+	dynarec_array = dynarec.split(" ")
+	dynarec_dict = dict(zip(dynarec_array[::2], dynarec_array[1::2]))
+
+	diff = dict([(k, (inter_dict[k], dynarec_dict[k])) for k in inter_dict.keys() if inter_dict[k] != dynarec_dict[k]])
+
+	print("\nDifferences:")
+	print("{:15}{:15}{:15}".format("", "Interpreter", "Dynarec"))
+	for k in diff:
+		print("{:15}{:15}{:15}".format(k, diff[k][0], diff[k][1]))
+
+def print_mismatch(inter, dynarec, oldline):
+	print("\nMismatch!")
+	print(inter + " - Interpreter")
+	print(dynarec + " - Dynarec")
+	print("State before the mismatch:")
+	print(oldline)
+	print_differences(inter, dynarec)
+
 def read_loop(p1, p2):
 	oldline = ""
 
@@ -28,77 +49,54 @@ def read_loop(p1, p2):
 			# TODO: Proper matching
 
 			# Lightrec might be lagging behind
-			if line1[0:16] != line2[0:16]:
+			#if line1[0:16] != line2[0:16]:
+			if line1[6:16] != line2[6:16]:
 				cycle1 = int(line1[6:16], 16)
 				cycle2 = int(line2[6:16], 16)
 
 				if cycle1 < cycle2:
-					#print(line2[:-1] + " - Dynarec")
+					print(line2[:-1] + " - Dynarec")
 
 					while cycle1 < cycle2:
-						print(line1[:16] + " - Interpreter lagging behind")
+						print(line1[:-1] + " - Interpreter lagging behind")
+						print_differences(line1[:-1], line2[:-1])
 						line1 = get_next_line(p1)
 						cycle1 = int(line1[6:16], 16)
 
 					while cycle1 > cycle2:
-						print(line2[:16] + " - Dynarec lagging behind")
+						print(line2[:-1] + " - Dynarec lagging behind")
+						print_differences(line1[:-1], line2[:-1])
 						line2 = get_next_line(p2)
 						cycle2 = int(line2[6:16], 16)
 
 					if cycle1 != cycle2:
-						print("Mismatch!")
-						print(line1[:-1] + " - Interpreter")
-						print(line2[:-1] + " - Dynarec")
-						print("State before the mismatch:")
-						print(oldline)
+						print_mismatch(line1[:-1], line2[:-1], oldline)
 						break
 
 				if cycle2 < cycle1:
-					#print(line1[:-1] + " - Interpreter")
+					print(line1[:-1] + " - Interpreter")
 
 					while cycle1 > cycle2:
-						print(line2[:16] + " - Dynarec lagging behind")
+						print(line2[:-1] + " - Dynarec lagging behind")
+						print_differences(line1[:-1], line2[:-1])
 						line2 = get_next_line(p2)
 						cycle2 = int(line2[6:16], 16)
 
 					while cycle1 < cycle2:
-						print(line1[:16] + " - Interpreter lagging behind")
+						print(line1[:-1] + " - Interpreter lagging behind")
+						print_differences(line1[:-1], line2[:-1])
 						line1 = get_next_line(p1)
 						cycle1 = int(line1[6:16], 16)
 
 					if cycle1 != cycle2:
-						print("Mismatch!")
-						print("INT: " + line1[:-1])
-						print("JIT: " + line2[:-1])
-						print("State before the mismatch:")
-						print(oldline)
+						print_mismatch(line1[:-1], line2[:-1], oldline)
 						break
 
 				oldline = line1[:-1]
 				print(oldline[:16] + " - Match")
 				continue
 
-			inter = line1[:-1]
-			dynarec = line2[:-1]
-
-			print("\nMismatch!")
-			print(inter + " - Interpreter")
-			print(dynarec + " - Dynarec")
-			print("State before the mismatch:")
-			print(oldline)
-
-			inter_array = inter.split(" ")
-			inter_dict = dict(zip(inter_array[::2], inter_array[1::2]))
-			dynarec_array = dynarec.split(" ")
-			dynarec_dict = dict(zip(dynarec_array[::2], dynarec_array[1::2]))
-
-			diff = dict([(k, (inter_dict[k], dynarec_dict[k])) for k in inter_dict.keys() if inter_dict[k] != dynarec_dict[k]])
-
-			print("\nDifferences:")
-			print("{:15}{:15}{:15}".format("", "Interpreter", "Dynarec"))
-			for k in diff:
-				print("{:15}{:15}{:15}".format(k, diff[k][0], diff[k][1]))
-
+			print_mismatch(line1[:-1], line2[:-1], oldline)
 			break
 		else:
 			oldline = line1[:-1]
