@@ -92,8 +92,9 @@ def read_loop(p1, p2):
 						print_mismatch(line1[:-1], line2[:-1], oldline)
 						break
 
-				oldline = line1[:-1]
-				print(oldline[:16] + " - Match")
+				if line1 == line2:
+					oldline = line1[:-1]
+					print(oldline[:16] + " - Match")
 				continue
 
 			print_mismatch(line1[:-1], line2[:-1], oldline)
