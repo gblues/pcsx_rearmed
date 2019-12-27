@@ -69,7 +69,7 @@ def read_loop(p1, p2):
 						line2 = get_next_line(p2)
 						cycle2 = int(line2[6:16], 16)
 
-					if cycle1 != cycle2:
+					if line1 != line2:
 						print_mismatch(line1[:-1], line2[:-1], oldline)
 						break
 
@@ -88,7 +88,7 @@ def read_loop(p1, p2):
 						line1 = get_next_line(p1)
 						cycle1 = int(line1[6:16], 16)
 
-					if cycle1 != cycle2:
+					if line1 != line2:
 						print_mismatch(line1[:-1], line2[:-1], oldline)
 						break
 
