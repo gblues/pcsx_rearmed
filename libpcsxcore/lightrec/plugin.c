@@ -85,6 +85,8 @@ static void (*cp2_ops[])(struct psxCP2Regs *) = {
 	[OP_CP2_NCCT] = gteNCCT,
 };
 
+static char cache_buf[64 * 1024];
+
 static u32 cop0_mfc(struct lightrec_state *state, u8 reg)
 {
 	return psxRegs.CP0.r[reg];
@@ -120,8 +122,12 @@ static void cop0_mtc_ctc(struct lightrec_state *state,
 		/* Those registers are read-only */
 		break;
 	case 12: /* Status */
-		if ((psxRegs.CP0.n.Status & ~value) & (1 << 16))
+		if ((psxRegs.CP0.n.Status & ~value) & (1 << 16)) {
+			memcpy(psxM, cache_buf, sizeof(cache_buf));
 			lightrec_invalidate_all(state);
+		} else if ((~psxRegs.CP0.n.Status & value) & (1 << 16)) {
+			memcpy(cache_buf, psxM, sizeof(cache_buf));
+		}
 
 		psxRegs.CP0.n.Status = value;
 		lightrec_set_exit_flags(state, LIGHTREC_EXIT_CHECK_INTERRUPT);
@@ -534,20 +540,6 @@ static void lightrec_plugin_reset(void)
 {
 	lightrec_plugin_shutdown();
 	lightrec_plugin_init();
-
-	/* At some point, the BIOS disables the writes to the RAM - every
-	 * SB/SH/SW/etc pointing to the RAM won't have any effect.
-	 * Since Lightrec does not emulate that, we just hack the BIOS here to
-	 * jump above that code. */
-	memset((void *)(psxR + 0x250), 0, 0x28);
-	memset((void *)(psxR + 0x2a0), 0, 0x88);
-	*(u32 *)(psxR + 0x320) = htole32(0x240a1000);
-	*(u32 *)(psxR + 0x324) = htole32(0x240b0f80);
-
-	memset((void *)(psxR + 0x1960), 0, 0x28);
-	memset((void *)(psxR + 0x19b0), 0, 0x88);
-	*(u32 *)(psxR + 0x1a30) = htole32(0x240a1000);
-	*(u32 *)(psxR + 0x1a34) = htole32(0x240b0f80);
 }
 
 R3000Acpu psxRec =
