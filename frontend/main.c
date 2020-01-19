@@ -58,6 +58,7 @@ enum sched_action emu_action, emu_action_old;
 char hud_msg[64];
 int hud_new_msg;
 
+int use_pcsx_interpreter = 0;
 int use_lightrec_interpreter = 0;
 int lightrec_debug = 0;
 int lightrec_very_debug = 0;
@@ -574,6 +575,8 @@ int main(int argc, char *argv[])
 							"\tfile\t\tLoads a PSX EXE file\n"));
 			 return 0;
 #ifdef LIGHTREC
+		} else if (!strcmp(argv[i], "-pcsx-interpreter")) {
+			use_pcsx_interpreter = 1;
 		} else if (!strcmp(argv[i], "-lightrec-interpreter")) {
 			use_lightrec_interpreter = 1;
 		} else if (!strcmp(argv[i], "-lightrec-debug")) {

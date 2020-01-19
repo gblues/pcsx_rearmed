@@ -62,6 +62,7 @@ extern int hud_new_msg;
 
 #ifdef LIGHTREC
 extern int use_lightrec_interpreter;
+extern int use_pcsx_interpreter;
 extern int lightrec_debug;
 extern int lightrec_very_debug;
 extern unsigned int lightrec_begin_cycles;
