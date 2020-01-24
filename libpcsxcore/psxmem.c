@@ -135,7 +135,7 @@ int psxMemInit() {
 	memset(psxMemRLUT, 0, 0x10000 * sizeof(void *));
 	memset(psxMemWLUT, 0, 0x10000 * sizeof(void *));
 
-	psxM = psxMap(0x80000000, 0x00210000, 1, MAP_TAG_RAM);
+	psxM = psxMap(0x10000000, 0x00210000, 1, MAP_TAG_RAM);
 #ifndef RAM_FIXED
 	if (psxM == NULL)
 		psxM = psxMap(0x77000000, 0x00210000, 0, MAP_TAG_RAM);
@@ -146,8 +146,8 @@ int psxMemInit() {
 	}
 
 	psxP = &psxM[0x200000];
-	psxH = psxMap(0x1f800000, 0x10000, 0, MAP_TAG_OTHER);
-	psxR = psxMap(0x1fc00000, 0x80000, 0, MAP_TAG_OTHER);
+	psxH = psxMap(0x2f800000, 0x10000, 0, MAP_TAG_OTHER);
+	psxR = psxMap(0x2fc00000, 0x80000, 0, MAP_TAG_OTHER);
 
 	if (psxMemRLUT == NULL || psxMemWLUT == NULL || 
 	    psxR == NULL || psxP == NULL || psxH == NULL) {
