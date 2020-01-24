@@ -54,12 +54,8 @@ void (*psxCP2[64])(struct psxCP2Regs *regs);
 void (*psxCP2BSC[32])();
 
 static void psxLightrecBranchTest() {
-#ifdef LIGHTREC
-	if (!use_lightrec_interpreter)
+	if (Config.Cpu == CPU_INTERPRETER)
 		psxBranchTest();
-#else
-	psxBranchTest();
-#endif
 }
 
 static void delayRead(int reg, u32 bpc) {
@@ -553,8 +549,8 @@ void psxMULTU() {
 * Register branch logic                                  *
 * Format:  OP rs, offset                                 *
 *********************************************************/
-#define RepZBranchi32(op)      if(_i32(_rRs_) op 0) doBranch(_BranchTarget_);
-#define RepZBranchLinki32(op)  if(_i32(_rRs_) op 0) { _SetLink(31); doBranch(_BranchTarget_); }
+#define RepZBranchi32(op)      psxRegs.cycle += block_cycles + 4; block_cycles = -4; if(_i32(_rRs_) op 0) doBranch(_BranchTarget_);
+#define RepZBranchLinki32(op)  psxRegs.cycle += block_cycles + 4; block_cycles = -4; if(_i32(_rRs_) op 0) { _SetLink(31); doBranch(_BranchTarget_); }
 
 void psxBGEZ()   { RepZBranchi32(>=) }      // Branch if Rs >= 0
 void psxBGEZAL() { RepZBranchLinki32(>=) }  // Branch if Rs >= 0 and link
@@ -622,7 +618,7 @@ void psxRFE() {
 * Register branch logic                                  *
 * Format:  OP rs, rt, offset                             *
 *********************************************************/
-#define RepBranchi32(op)      if(_i32(_rRs_) op _i32(_rRt_)) doBranch(_BranchTarget_);
+#define RepBranchi32(op)      psxRegs.cycle += block_cycles + 4; block_cycles = -4; if(_i32(_rRs_) op _i32(_rRt_)) doBranch(_BranchTarget_);
 
 void psxBEQ() {	RepBranchi32(==) }  // Branch if Rs == Rt
 void psxBNE() {	RepBranchi32(!=) }  // Branch if Rs != Rt
