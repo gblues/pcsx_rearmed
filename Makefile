@@ -73,7 +73,7 @@ ifeq "$(USE_DYNAREC)" "1"
  else
  USE_LIGHTREC=1
  LDLIBS += -llightrec
- OBJS += libpcsxcore/lightrec/plugin.o
+ OBJS += libpcsxcore/lightrec/plugin.o libpcsxcore/lightrec/mem.o
  endif
 else
 CFLAGS += -DDRC_DISABLE
