@@ -25,7 +25,10 @@
 #define MAP_FIXED_NOREPLACE 0x100000
 #endif
 
+extern int lightrec_mmap_zero;
+
 static const uintptr_t supported_io_bases[] = {
+	0x0,
 	0x10000000,
 	0x40000000,
 	0x80000000,
@@ -79,6 +82,9 @@ static int lightrec_mmap_ram(bool hugetlb)
 
 	for (i = 0; i < ARRAY_SIZE(supported_io_bases); i++) {
 		base = supported_io_bases[i];
+
+		if (!base && !lightrec_mmap_zero)
+			continue;
 
 		for (j = 0; j < 4; j++) {
 			map = mmap_huge((void *)(base + j * 0x200000),

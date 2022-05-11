@@ -64,6 +64,7 @@ int hud_new_msg;
 
 int use_pcsx_interpreter = 0;
 int use_lightrec_interpreter = 0;
+int lightrec_mmap_zero = 0;
 int lightrec_debug = 0;
 int lightrec_very_debug = 0;
 unsigned int lightrec_begin_cycles = 0;
@@ -607,6 +608,8 @@ int main(int argc, char *argv[])
 			use_pcsx_interpreter = 1;
 		} else if (!strcmp(argv[i], "-lightrec-interpreter")) {
 			use_lightrec_interpreter = 1;
+		} else if (!strcmp(argv[i], "-lightrec-mmap-zero")) {
+			lightrec_mmap_zero = 1;
 		} else if (!strcmp(argv[i], "-lightrec-debug")) {
 			lightrec_debug = 1;
 		} else if (!strcmp(argv[i], "-lightrec-very-debug")) {
