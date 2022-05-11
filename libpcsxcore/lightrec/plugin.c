@@ -24,6 +24,8 @@
 
 #include "../frontend/main.h"
 
+#include "mem.h"
+
 #define ARRAY_SIZE(x) (sizeof(x) ? sizeof(x) / sizeof((x)[0]) : 0)
 
 #ifdef __GNUC__
@@ -278,6 +280,9 @@ static struct lightrec_mem_map lightrec_map[] = {
 		.length = 0x200000,
 		.mirror_of = &lightrec_map[PSX_MAP_KERNEL_USER_RAM],
 	},
+	[PSX_MAP_CODE_BUFFER] = {
+		.length = CODE_BUFFER_SIZE,
+	},
 };
 
 static void lightrec_enable_ram(struct lightrec_state *state, bool enable)
@@ -379,16 +384,18 @@ static int lightrec_plugin_init(void)
 	lightrec_map[PSX_MAP_SCRATCH_PAD].address = psxH;
 	lightrec_map[PSX_MAP_HW_REGISTERS].address = psxH + 0x1000;
 	lightrec_map[PSX_MAP_PARALLEL_PORT].address = psxP;
+	lightrec_map[PSX_MAP_CODE_BUFFER].address = code_buffer;
 
 	lightrec_state = lightrec_init(name,
 			lightrec_map, ARRAY_SIZE(lightrec_map),
 			&lightrec_ops);
 
-	fprintf(stderr, "M=0x%lx, P=0x%lx, R=0x%lx, H=0x%lx\n",
+	fprintf(stderr, "M=0x%lx, P=0x%lx, R=0x%lx, H=0x%lx, codebuf=0x%lx\n",
 			(uintptr_t) psxM,
 			(uintptr_t) psxP,
 			(uintptr_t) psxR,
-			(uintptr_t) psxH);
+			(uintptr_t) psxH,
+			(uintptr_t) code_buffer);
 
 	signal(SIGPIPE, exit);
 	return 0;
