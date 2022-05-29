@@ -55,6 +55,7 @@ void (*psxUnmapHook)(void *ptr, size_t size, enum psxMapTag tag);
 void *psxMap(unsigned long addr, size_t size, int is_fixed,
 		enum psxMapTag tag)
 {
+#ifndef NO_MMAP
 	int flags = MAP_PRIVATE | MAP_ANONYMOUS;
 	int try_ = 0;
 	unsigned long mask;
@@ -100,10 +101,14 @@ retry:
 	}
 
 	return ret;
+#else
+	return malloc(size);
+#endif // NO_MMAP
 }
 
 void psxUnmap(void *ptr, size_t size, enum psxMapTag tag)
 {
+#ifndef NO_MMAP
 	if (psxUnmapHook != NULL) {
 		psxUnmapHook(ptr, size, tag);
 		return;
@@ -111,6 +116,9 @@ void psxUnmap(void *ptr, size_t size, enum psxMapTag tag)
 
 	if (ptr)
 		munmap(ptr, size);
+#else
+	free(ptr);
+#endif // NO_MMAP
 }
 
 s8 *psxM = NULL; // Kernel & User Memory (2 Meg)

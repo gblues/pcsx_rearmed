@@ -491,6 +491,13 @@ else
 	USE_LIBRETRO_VFS = 1
 endif
 
+ifeq ($(NO_MMAP),1)
+CFLAGS += -DNO_MMAP
+endif
+ifeq ($(NO_PTHREAD),1)
+CFLAGS += -DNO_PTHREAD
+endif
+
 CFLAGS += $(fpic)
 MAIN_LDFLAGS += -shared
 MAIN_LDLIBS += $(LIBPTHREAD) $(LIBM) $(LIBDL) $(LIBZ)
