@@ -92,10 +92,15 @@ CFLAGS += -Ideps/lightning/include -Ideps/lightrec -Iinclude/lightning -Iinclude
 		  -DLIGHTREC -DLIGHTREC_STATIC
 LIGHTREC_CUSTOM_MAP ?= 0
 CFLAGS += -DLIGHTREC_CUSTOM_MAP=$(LIGHTREC_CUSTOM_MAP)
+ifeq ($(NO_MMAP),)
 deps/lightning/lib/%.o: CFLAGS += -DHAVE_MMAP
+endif
 ifeq ($(LIGHTREC_CUSTOM_MAP),1)
-LDLIBS += -lrt
-OBJS += libpcsxcore/lightrec/mem.o
+# Allow these to be overriden by platforms
+LIBRT ?= -lrt
+LIGHTREC_CUSTOM_MAP_OBJ ?= libpcsxcore/lightrec/mem.o
+LDLIBS += $(LIBRT)
+OBJS += $(LIGHTREC_CUSTOM_MAP_OBJ)
 endif
 OBJS += deps/lightrec/tlsf/tlsf.o
 OBJS += libpcsxcore/lightrec/plugin.o
@@ -218,7 +223,7 @@ ifeq "$(THREAD_RENDERING)" "1"
 CFLAGS += -DTHREAD_RENDERING
 OBJS += plugins/gpulib/gpulib_thread_if.o
 endif
-plugins/gpu_unai/gpulib_if.o: CFLAGS += -DREARMED -O3 
+plugins/gpu_unai/gpulib_if.o: CFLAGS += -DREARMED -O3
 CC_LINK = $(CXX)
 endif
 
