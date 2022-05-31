@@ -23,10 +23,17 @@
 
 #include "psxhle.h"
 
+#include "../frontend/main.h"
+
+static void psxLightrecBranchTest() {
+	if (!LIGHTREC || !use_lightrec_interpreter)
+		psxBranchTest();
+}
+
 static void hleDummy() {
 	psxRegs.pc = psxRegs.GPR.n.ra;
 
-	psxBranchTest();
+	psxLightrecBranchTest();
 }
 
 static void hleA0() {
@@ -34,7 +41,7 @@ static void hleA0() {
 
 	if (biosA0[call]) biosA0[call]();
 
-	psxBranchTest();
+	psxLightrecBranchTest();
 }
 
 static void hleB0() {
@@ -42,7 +49,7 @@ static void hleB0() {
 
 	if (biosB0[call]) biosB0[call]();
 
-	psxBranchTest();
+	psxLightrecBranchTest();
 }
 
 static void hleC0() {
@@ -50,7 +57,7 @@ static void hleC0() {
 
 	if (biosC0[call]) biosC0[call]();
 
-	psxBranchTest();
+	psxLightrecBranchTest();
 }
 
 static void hleBootstrap() { // 0xbfc00000
