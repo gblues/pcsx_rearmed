@@ -287,23 +287,29 @@ else ifneq (,$(filter $(platform),ngc wii wiiu))
 	AR  = $(DEVKITPPC)/bin/powerpc-eabi-ar$(EXE_EXT)
 	ifeq ($(platform), ngc)
 		CFLAGS += -DHW_DOL -mogc
+		DYNAREC := none
 	else ifeq ($(platform), wii)
 		CFLAGS += -DHW_RVL -mrvl
+		DYNAREC := none
 	else ifeq ($(platform), wiiu)
 		# -mwup was removed in newer devkitPPC versions
 		CFLAGS += -DHW_WUP -D__wiiu__ -DHW_WUP -ffunction-sections -fdata-sections
+		CFLAGS += -D__clear_cache=wiiu_clear_cache
 		CFLAGS += -Ifrontend/wiiu
+		DYNAREC := lightrec
+		LIGHTREC_CUSTOM_MAP := 1
+		LIGHTREC_CUSTOM_MAP_OBJ := libpcsxcore/lightrec/mem_wiiu.o
 	endif
 	CFLAGS += -D__ppc__ -D__powerpc__
 	CFLAGS += -DGEKKO -mcpu=750 -meabi -mhard-float
 	CFLAGS += -DNO_SOCKET -DNO_DYLIB
 	STATIC_LINKING := 1
 	THREAD_RENDERING := 0
-	DYNAREC := none
 	NO_PTHREAD := 1
 	NO_MMAP := 1
 	LIBDL :=
 	LIBPTHREAD :=
+	LIBRT :=
 
 # QNX
 else ifeq ($(platform), qnx)
