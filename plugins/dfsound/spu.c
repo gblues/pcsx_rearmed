@@ -1352,25 +1352,28 @@ static void RemoveStreams(void)
 #elif defined(THREAD_ENABLED)
 
 #include <pthread.h>
-#include <semaphore.h>
 #include <unistd.h>
 
 static struct {
  pthread_t thread;
- sem_t sem_avail;
- sem_t sem_done;
+ pthread_mutex_t lock;
+ pthread_cond_t cond_avail, cond_done;
 } t;
 
 /* generic pthread implementation */
 
 static void thread_work_start(void)
 {
- sem_post(&t.sem_avail);
+ pthread_mutex_lock(&t.lock);
+ pthread_cond_signal(&t.cond_avail);
+ pthread_mutex_unlock(&t.lock);
 }
 
 static void thread_work_wait_sync(struct work_item *work, int force)
 {
- sem_wait(&t.sem_done);
+ pthread_mutex_lock(&t.lock);
+ pthread_cond_wait(&t.cond_done, &t.lock);
+ pthread_mutex_unlock(&t.lock);
 }
 
 static int thread_get_i_done(void)
@@ -1386,17 +1389,24 @@ static void *spu_worker_thread(void *unused)
 {
  struct work_item *work;
 
+ pthread_mutex_lock(&t.lock);
+
  while (1) {
-  sem_wait(&t.sem_avail);
+  pthread_cond_wait(&t.cond_avail, &t.lock);
   if (worker->exit_thread)
    break;
 
   work = &worker->i[worker->i_done & WORK_I_MASK];
-  do_channel_work(work);
-  worker->i_done++;
+  pthread_mutex_unlock(&t.lock);
 
-  sem_post(&t.sem_done);
+  do_channel_work(work);
+
+  pthread_mutex_lock(&t.lock);
+  worker->i_done++;
+  pthread_cond_signal(&t.cond_done);
  }
+
+ pthread_mutex_unlock(&t.lock);
 
  return NULL;
 }
@@ -1411,12 +1421,18 @@ static void init_spu_thread(void)
  worker = calloc(1, sizeof(*worker));
  if (worker == NULL)
   return;
- ret = sem_init(&t.sem_avail, 0, 0);
+
+ ret = pthread_mutex_init(&t.lock, NULL);
  if (ret != 0)
-  goto fail_sem_avail;
- ret = sem_init(&t.sem_done, 0, 0);
+  goto fail_mutex;
+
+ ret = pthread_cond_init(&t.cond_avail, NULL);
  if (ret != 0)
-  goto fail_sem_done;
+  goto fail_cond_avail;
+
+ ret = pthread_cond_init(&t.cond_done, NULL);
+ if (ret != 0)
+  goto fail_cond_done;
 
  ret = pthread_create(&t.thread, NULL, spu_worker_thread, NULL);
  if (ret != 0)
@@ -1426,10 +1442,12 @@ static void init_spu_thread(void)
  return;
 
 fail_thread:
- sem_destroy(&t.sem_done);
-fail_sem_done:
- sem_destroy(&t.sem_avail);
-fail_sem_avail:
+ pthread_cond_destroy(&t.cond_done);
+fail_cond_done:
+ pthread_cond_destroy(&t.cond_avail);
+fail_cond_avail:
+ pthread_mutex_destroy(&t.lock);
+fail_mutex:
  free(worker);
  worker = NULL;
  spu_config.iThreadAvail = 0;
@@ -1439,11 +1457,16 @@ static void exit_spu_thread(void)
 {
  if (worker == NULL)
   return;
+
+ pthread_mutex_lock(&t.lock);
  worker->exit_thread = 1;
- sem_post(&t.sem_avail);
+ pthread_cond_signal(&t.cond_avail);
+ pthread_mutex_unlock(&t.lock);
+
  pthread_join(t.thread, NULL);
- sem_destroy(&t.sem_done);
- sem_destroy(&t.sem_avail);
+ pthread_cond_destroy(&t.cond_done);
+ pthread_cond_destroy(&t.cond_avail);
+ pthread_mutex_destroy(&t.lock);
  free(worker);
  worker = NULL;
 }
