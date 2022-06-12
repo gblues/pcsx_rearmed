@@ -66,6 +66,7 @@ retry:
 		if (ret == NULL)
 			return MAP_FAILED;
 	}
+#ifndef NO_MMAP
 	else {
 		/* avoid MAP_FIXED, it overrides existing mappings.. */
 		/* if (is_fixed)
@@ -100,6 +101,10 @@ retry:
 	}
 
 	return ret;
+#else // NO_MMAP
+	ret = malloc(size);
+	return (ret == NULL) ? MAP_FAILED : ret;
+#endif
 }
 
 void psxUnmap(void *ptr, size_t size, enum psxMapTag tag)
@@ -109,8 +114,12 @@ void psxUnmap(void *ptr, size_t size, enum psxMapTag tag)
 		return;
 	}
 
+#ifndef NO_MMAP
 	if (ptr)
 		munmap(ptr, size);
+#else // NO_MMAP
+	free(ptr);
+#endif
 }
 
 s8 *psxM = NULL; // Kernel & User Memory (2 Meg)

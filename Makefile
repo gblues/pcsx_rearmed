@@ -46,6 +46,9 @@ LDLIBS += $(MAIN_LDLIBS)
 ifdef PCNT
 CFLAGS += -DPCNT
 endif
+ifeq ($(NO_MMAP),1)
+CFLAGS += -DNO_MMAP
+endif
 
 # core
 OBJS += libpcsxcore/cdriso.o libpcsxcore/cdrom.o libpcsxcore/cheat.o libpcsxcore/database.o \
