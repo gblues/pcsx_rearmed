@@ -140,16 +140,16 @@ int pthread_cond_init(pthread_cond_t *cond,
    return 0;
 }
 
-int pthread_cond_signal(pthread_cond_t *cond)
+int pthread_cond_broadcast(pthread_cond_t *cond)
 {
    OSSignalCond(*cond);
    return 0;
 }
 
-int pthread_cond_broadcast(pthread_cond_t *cond)
+int pthread_cond_signal(pthread_cond_t *cond)
 {
-   //FIXME: no OS equivalent
-   (void)cond;
+   // POSIX: "at least one of the threads". All > one
+   pthread_cond_broadcast(cond);
    return 0;
 }
 
