@@ -16,6 +16,7 @@ INPUT_DIR    := $(ROOT_DIR)/plugins/dfinput
 FRONTEND_DIR := $(ROOT_DIR)/frontend
 NEON_DIR     := $(ROOT_DIR)/plugins/gpu_neon
 UNAI_DIR     := $(ROOT_DIR)/plugins/gpu_unai
+PEOPS_DIR    := $(ROOT_DIR)/plugins/dfxvideo
 DYNAREC_DIR  := $(ROOT_DIR)/libpcsxcore/new_dynarec
 DEPS_DIR     := $(ROOT_DIR)/deps
 LIBRETRO_COMMON := $(ROOT_DIR)/libretro-common
@@ -173,18 +174,25 @@ endif
 
 ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
   COREFLAGS   += -DNEON_BUILD -DTEXTURE_CACHE_4BPP -DTEXTURE_CACHE_8BPP -DGPU_NEON
+  COREFLAGS   += -DHAVE_bgr555_to_rgb565 -DHAVE_bgr888_to_x
   SOURCES_ASM += $(CORE_DIR)/gte_neon.S \
                  $(NEON_DIR)/psx_gpu/psx_gpu_arm_neon.S \
                  $(FRONTEND_DIR)/cspace_neon.S
   SOURCES_C   += $(NEON_DIR)/psx_gpu_if.c
 else ifeq ($(TARGET_ARCH_ABI),armeabi)
-  COREFLAGS += -DUSE_GPULIB=1 -DGPU_UNAI
+  COREFLAGS   += -DUSE_GPULIB=1 -DGPU_UNAI
+  COREFLAGS   += -DHAVE_bgr555_to_rgb565
   SOURCES_ASM += $(UNAI_DIR)/gpu_arm.S \
                  $(FRONTEND_DIR)/cspace_arm.S
   SOURCES_C += $(UNAI_DIR)/gpulib_if.cpp
+else ifeq ($(TARGET_ARCH_ABI),arm64-v8a)
+  COREFLAGS   += -DNEON_BUILD -DTEXTURE_CACHE_4BPP -DTEXTURE_CACHE_8BPP
+  COREFLAGS   += -DGPU_NEON -DSIMD_BUILD
+  SOURCES_C   += $(NEON_DIR)/psx_gpu_if.c \
+                 $(NEON_DIR)/psx_gpu/psx_gpu_simd.c
 else
-  COREFLAGS += -DUSE_GPULIB=1 -DGPU_UNAI
-  SOURCES_C += $(UNAI_DIR)/gpulib_if.cpp
+  COREFLAGS += -fno-strict-aliasing -DGPU_PEOPS
+  SOURCES_C += $(PEOPS_DIR)/gpulib_if.c
 endif
 
 GIT_VERSION := " $(shell git rev-parse --short HEAD || echo unknown)"

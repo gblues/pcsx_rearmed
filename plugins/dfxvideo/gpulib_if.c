@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../gpulib/gpu.h"
+#include "../../include/arm_features.h"
 
 #ifdef THREAD_RENDERING
 #include "../gpulib/gpulib_thread_if.h"
@@ -84,16 +85,15 @@
 
 #endif
 
-#define GETLEs16(X) ((int16_t)GETLE16((uint16_t *)X))
-#define GETLEs32(X) ((int16_t)GETLE32((uint16_t *)X))
+#define GETLEs16(X) ((int16_t)GETLE16((uint16_t *)(X)))
 
-#define GETLE16(X) LE2HOST16(*(uint16_t *)X)
-#define GETLE32_(X) LE2HOST32(*(uint32_t *)X)
-#define GETLE16D(X) ({uint32_t val = GETLE32(X); (val<<16 | val >> 16);})
-#define PUTLE16(X, Y) do{*((uint16_t *)X)=HOST2LE16((uint16_t)Y);}while(0)
-#define PUTLE32_(X, Y) do{*((uint32_t *)X)=HOST2LE32((uint32_t)Y);}while(0)
-#ifdef __arm__
-#define GETLE32(X) (*(uint16_t *)(X)|(((uint16_t *)(X))[1]<<16))
+#define GETLE16(X) LE2HOST16(*(uint16_t *)(X))
+#define GETLE32_(X) LE2HOST32(*(uint32_t *)(X))
+#define PUTLE16(X, Y) do{*((uint16_t *)(X))=HOST2LE16((uint16_t)(Y));}while(0)
+#define PUTLE32_(X, Y) do{*((uint32_t *)(X))=HOST2LE32((uint32_t)(Y));}while(0)
+#if defined(__arm__) && !defined(HAVE_ARMV6)
+// for (very) old ARMs with no unaligned loads?
+#define GETLE32(X) (*(uint16_t *)(X)|((uint32_t)((uint16_t *)(X))[1]<<16))
 #define PUTLE32(X, Y) do{uint16_t *p_=(uint16_t *)(X);uint32_t y_=Y;p_[0]=y_;p_[1]=y_>>16;}while(0)
 #else
 #define GETLE32 GETLE32_
@@ -249,12 +249,8 @@ extern int32_t           drawH;
 
 PSXDisplay_t      PSXDisplay;
 unsigned char  *psxVub;
-signed   char  *psxVsb;
 unsigned short *psxVuw;
 unsigned short *psxVuw_eom;
-signed   short *psxVsw;
-uint32_t *psxVul;
-int32_t  *psxVsl;
 
 long              lGPUstatusRet;
 uint32_t          lGPUInfoVals[16];
@@ -278,13 +274,7 @@ long           lLowerpart;
 static void set_vram(void *vram)
 {
  psxVub=vram;
-
- psxVsb=(signed char *)psxVub;                         // different ways of accessing PSX VRAM
- psxVsw=(signed short *)psxVub;
- psxVsl=(int32_t *)psxVub;
  psxVuw=(unsigned short *)psxVub;
- psxVul=(uint32_t *)psxVub;
-
  psxVuw_eom=psxVuw+1024*512;                           // pre-calc of end of vram
 }
 
@@ -414,8 +404,16 @@ breakloop:
   return list - list_start;
 }
 
-void renderer_sync_ecmds(uint32_t *ecmds)
+void renderer_sync_ecmds(uint32_t *ecmds_)
 {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+  // the funcs below expect LE
+  uint32_t i, ecmds[8];
+  for (i = 1; i <= 6; i++)
+    ecmds[i] = HTOLE32(ecmds_[i]);
+#else
+  uint32_t *ecmds = ecmds_;
+#endif
   cmdTexturePage((unsigned char *)&ecmds[1]);
   cmdTextureWindow((unsigned char *)&ecmds[2]);
   cmdDrawAreaStart((unsigned char *)&ecmds[3]);
