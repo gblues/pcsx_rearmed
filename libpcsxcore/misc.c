@@ -28,6 +28,7 @@
 #include "gpu.h"
 #include "ppf.h"
 #include "database.h"
+#include "lightrec/plugin.h"
 #include <zlib.h>
 
 char CdromId[10] = "";
@@ -55,10 +56,11 @@ struct iso_directory_record {
 	char name			[1];
 };
 
-void mmssdd( char *b, char *p )
+static void mmssdd( char *b, char *p )
 {
 	int m, s, d;
-	int block = SWAP32(*((uint32_t*) b));
+	unsigned char *ub = (void *)b;
+	int block = (ub[3] << 24) | (ub[2] << 16) | (ub[1] << 8) | ub[0];
 
 	block += 150;
 	m = block / 4500;			// minutes
@@ -595,15 +597,6 @@ static const char PcsxHeader[32] = "STv4 PCSX v" PCSX_VERSION;
 // Savestate Versioning!
 // If you make changes to the savestate version, please increment the value below.
 static const u32 SaveVersion = 0x8b410006;
-
-static int drc_is_lightrec(void)
-{
-#if defined(LIGHTREC)
-	return 1;
-#else
-	return 0;
-#endif
-}
 
 int SaveState(const char *file) {
 	void *f;
