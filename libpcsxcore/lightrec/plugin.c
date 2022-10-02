@@ -385,6 +385,9 @@ static int lightrec_plugin_init(void)
 	lightrec_map[PSX_MAP_HW_REGISTERS].address = psxH + 0x1000;
 	lightrec_map[PSX_MAP_PARALLEL_PORT].address = psxP;
 	lightrec_map[PSX_MAP_CODE_BUFFER].address = code_buffer;
+	lightrec_map[PSX_MAP_MIRROR1].address = psxM + 0x200000;
+	lightrec_map[PSX_MAP_MIRROR2].address = psxM + 0x400000;
+	lightrec_map[PSX_MAP_MIRROR3].address = psxM + 0x600000;
 
 	lightrec_state = lightrec_init(name,
 			lightrec_map, ARRAY_SIZE(lightrec_map),
