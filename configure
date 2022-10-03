@@ -289,7 +289,7 @@ aarch64)
   fi
   ;;
 x86_64)
-  enable_dynarec="no"
+  enable_dynarec="yes"
   if [ "x$builtin_gpu" = "x" ]; then
     builtin_gpu="neon"
   fi
